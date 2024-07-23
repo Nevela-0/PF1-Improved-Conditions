@@ -1,0 +1,48 @@
+{
+  "id": "pf1-improved-conditions",
+  "title": "PF1 Improved Conditions",
+  "version": "1.0",
+  "compatibility": {
+    "minimum": "11",
+    "verified": "11"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "pf1",
+        "type": "system",
+        "compatibility": {}
+      }
+    ],
+    "requires": [
+      {
+        "id": "socketlib",
+        "type": "module",
+        "compatibility": {}
+      }
+    ]
+  },
+  "authors": [
+    {
+      "name": "Nevela",
+      "discord": "nevela.",
+      "flags": {}
+    }
+  ],
+  "esmodules": ["scripts/main.js", "scripts/sockets.js"],
+  "socket": true,
+  "packs": [
+    {
+      "name": "Improved-Conditions",
+      "label": "Improved Conditions",
+      "system": "pf1",
+      "path": "packs/Improved-Conditions.db",
+      "entity": "JournalEntry",
+      "type": "JournalEntry",
+      "journal": {
+        "name": "Conditions",
+        "folder": "Improved Conditions"
+      }
+    }
+  ]
+}
