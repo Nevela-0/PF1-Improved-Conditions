@@ -1,0 +1,16 @@
+{
+  "PF1-Improved-Conditions": {
+    "Conditions": {
+      "anchored": "Verankert",
+      "disabled": "Kampfunfähig",
+      "dying": "Sterbend",
+      "fascinated": "Fasziniert",
+      "flatFooted": "Auf dem falschen Fuß",
+      "immobilized": "Bewegungsunfähig",
+      "petrified": "Versteinert",
+      "slowed": "Verlangsamt",
+      "stable": "Stabilisiert",
+      "unconscious": "Bewusstlos"
+    }
+  }
+}

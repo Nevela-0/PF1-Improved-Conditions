@@ -15,7 +15,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: []
               },
-              name: "Anchored",
+              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.anchored"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/anchored.png",
@@ -32,7 +32,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: []
               },
-              name: "Disabled",
+              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.disabled"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/disabled.png",
@@ -66,7 +66,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: []
               },
-              name: "Dying",
+              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.dying"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/dying.png",
@@ -85,7 +85,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   ],
                   flags: []
               },
-              name: "Fascinated",
+              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.fascinated"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/fascinated.png",
@@ -102,7 +102,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: []
               },
-              name: "Flat-Footed",
+              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.flatFooted"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/flat-footed.png",
@@ -119,7 +119,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: ["loseDexToAC"]
               },
-              name: "Immobilized",
+              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.immobilized"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/immobilized.png",
@@ -136,7 +136,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: ["loseDexToAC"]
               },
-              name: "Petrified",
+              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.petrified"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/petrified.png",
@@ -184,7 +184,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                 ],
                   flags: []
               },
-              name: "Slowed",
+              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.slowed"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/slowed.png",
@@ -201,7 +201,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: []
               },
-              name: "Stable",
+              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.stable"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/stable.png",
@@ -218,7 +218,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: []
               },
-              name: "Unconscious",
+              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.unconscious"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/unconscious.png",
