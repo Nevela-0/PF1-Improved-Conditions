@@ -1,0 +1,16 @@
+{
+  "PF1-Improved-Conditions": {
+    "Conditions": {
+      "anchored": "Anchored",
+      "disabled": "Disabled",
+      "dying": "Dying",
+      "fascinated": "Fascinated",
+      "flatFooted": "Flat-Footed",
+      "immobilized": "Immobilized",
+      "petrified": "Petrified",
+      "slowed": "Slowed",
+      "stable": "Stable",
+      "unconscious": "Unconscious"
+    }
+  }
+}
