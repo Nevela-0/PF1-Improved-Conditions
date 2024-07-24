@@ -1,16 +1,57 @@
 {
   "PF1-Improved-Conditions": {
-    "Conditions": {
-      "anchored": "Anchored",
-      "disabled": "Disabled",
-      "dying": "Dying",
-      "fascinated": "Fascinated",
-      "flatFooted": "Flat-Footed",
-      "immobilized": "Immobilized",
-      "petrified": "Petrified",
-      "slowed": "Slowed",
-      "stable": "Stable",
-      "unconscious": "Unconscious"
+    "Anchored": {
+      "label": "Anchored",
+      "description": "Fixed to a particular location.<br><br>Cannot be moved by any external force, including spells like telekinesis.<br><br>Cannot perform actions requiring movement.<br>Can still attack or cast spells if they do not involve changing position."
+    },
+    "Confused": {
+      "Effects": {
+        "1": "acts normally",
+        "2": "does nothing but babble incoherently",
+        "3a": "draws their {itemName} and inflicts {damage} points of damage to themselves with it.",
+        "3b": "strikes themselves in the face with their fists, causing {damage} points of bludgeoning damage.",
+        "4": "attacks the nearest creature"
+      }
+    },
+    "Disabled": {
+      "label": "Disabled",
+      "description": "Character with 0 or stable negative hit points.<br><br>Can take a single move or standard action each round (but not both).<br>Moves at half speed.<br><br>Standard actions deal 1 damage after completion, risking negative hit points and dying.<br><br>Can take swift, immediate, and free actions.<br><br>Recovers hit points naturally if helped.<br>Otherwise, DC 10 Constitution check after 8 hours rest to start natural recovery.<br>Penalty on check equals negative hit point total.<br><br>Failure causes 1 hit point loss but does not cause unconsciousness."
+    },
+    "Dying": {
+      "label": "Dying",
+      "description": "Unconscious and near death.<br><br>Negative hit points and not stabilized.<br><br>Can take no actions.<br><br>On next turn after being reduced to negative hit points, and all subsequent turns:<br>- DC 10 Constitution check to become stable.<br>- Penalty on roll equals negative hit point total.<br>- Natural 20 is an automatic success.<br>- Failure results in losing 1 hit point.<br><br>Stable characters do not need to make this check.<br><br>If negative hit points equal Constitution score, the character dies."
+    },
+    "EnergyDrained": {
+      "label": "Energy Drained",
+      "description": "Gains one or more negative levels.<br><br>Each negative level:<br>- Cumulative -1 penalty on ability checks, attack rolls, CMB, CMD, saves, and skill checks.<br>- Reduces current and total HP by 5.<br>- Treated as one level lower for level-dependent variables (e.g., spellcasting).<br><br>If negative levels equal Hit Dice, the character dies.<br><br>Temporary energy drains:<br>- New save each day to remove (DC same as original effect).<br><br>Permanent energy drains:<br>- No daily save to remove.<br>- Can be removed by spells like restoration.<br>- Remain after revival.<br>- Must be removed for effective revival if they equal Hit Dice.<br><br>Energy drain is not a death effect.<br>Death ward grants immunity to energy drain and suspends penalties while active."
+    },
+    "Fascinated": {
+      "label": "Fascinated",
+      "description": "Entranced by a supernatural or spell effect.<br><br>Stands or sits quietly, taking no actions other than paying attention to the effect.<br><br>-4 penalty on skill checks made as reactions (e.g., Perception checks).<br><br>Any potential threat (e.g., hostile creature approaching) allows a new saving throw.<br>Any obvious threat (e.g., drawing a weapon, casting a spell, aiming a ranged weapon) automatically breaks the effect.<br><br>An ally can shake the fascinated creature free as a standard action."
+    },
+    "FlatFooted": {
+      "label": "Flat-Footed",
+      "description": "Has not yet acted during combat.<br><br>Loses Dexterity bonus to AC and CMD.<br>Cannot make attacks of opportunity, unless having Combat Reflexes feat or Uncanny Dodge class ability.<br><br>Characters with Uncanny Dodge retain Dexterity bonus to AC and can make attacks of opportunity before acting in the first round.<br><br>Cannot take immediate actions while flat-footed."
+    },
+    "Immobilized": {
+      "label": "Immobilized",
+      "description": "Unable to move from current location.<br><br>Cannot take any move actions.<br>Cannot reposition itself.<br><br>Can still perform actions that do not require movement (e.g., attacking, casting spells)."
+    },
+    "Petrified": {
+      "label": "Petrified",
+      "description": "Turned to stone and considered unconscious.<br><br>If cracked or broken, but pieces are joined with the body upon returning to flesh, the character is unharmed.<br><br>If the petrified body is incomplete when returning to flesh, the body remains incomplete, resulting in permanent hit point loss and/or debilitation."
+    },
+    "Slowed": {
+      "label": "Slowed",
+      "description": "Movement is significantly hindered.<br><br>Movement speed is typically reduced by half.<br><br>May take fewer actions per turn, often limited to one standard action or move action."
+    },
+    "Stable": {
+      "label": "Stable",
+      "description": "No longer dying but still unconscious.<br><br>Stopped losing hit points each round while still having negative hit points.<br><br>If stabilized by aid (e.g., Heal check or magical healing), no longer loses hit points.<br><br>Can make a DC 10 Constitution check each hour to become conscious and disabled (penalty equals negative hit point total).<br><br>If stabilized without aid, still at risk of losing hit points.<br>Can make a Constitution check each hour to become stable (as if received aid), but each failed check causes 1 hit point loss."
+    },
+    "Unconscious": {
+      "label": "Unconscious",
+      "description": "Knocked out and helpless.<br><br>Can result from having negative hit points (but not more than the creature’s Constitution score) or from nonlethal damage exceeding current hit points."
     }
   }
 }

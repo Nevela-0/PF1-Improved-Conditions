@@ -1,16 +1,57 @@
 {
   "PF1-Improved-Conditions": {
-    "Conditions": {
-      "anchored": "Verankert",
-      "disabled": "Kampfunfähig",
-      "dying": "Sterbend",
-      "fascinated": "Fasziniert",
-      "flatFooted": "Auf dem falschen Fuß",
-      "immobilized": "Bewegungsunfähig",
-      "petrified": "Versteinert",
-      "slowed": "Verlangsamt",
-      "stable": "Stabilisiert",
-      "unconscious": "Bewusstlos"
+    "Anchored": {
+      "label": "Verankert",
+      "description": "<p>Kann nicht durch äußere Kräfte bewegt werden, auch nicht durch Zauber wie Telekinese.</p><p>Kann keine Aktionen ausführen, die eine Bewegung erfordern, kann aber trotzdem angreifen oder zaubern, wenn sie keine Positionsveränderung erfordern.</p>"
+    },
+    "Confused": {
+      "Effects": {
+        "1": "verhält sich normal",
+        "2": "macht nichts, außer zusammenhangslos vor sich hin zu brabbeln",
+        "3a": "zieht sein {itemName} und fügt sich selbst ${damage} schaden zu.",
+        "3b": "schlägt sich selbst mit der Faust ins Gesicht und verursacht {damage} Wuchtschaden.",
+        "4": "greift die nächste Kreatur an"
+      }
+    },
+    "Disabled": {
+      "label": "Kampfunfähig",
+      "description": "<p>Hat 0 TP oder negative TP, ist aber stabilisiert und bei Bewusstsein.</p><p>kann jede Runde eine Bewegungsaktion oder eine Standard-Aktion ausführen (nicht aber beides). kann Schnelle, Augenblickliche und Freie Aktionen ausführen.</p><p>Regeneriert auf natürliche Weise Trefferpunkte, wenn ihm geholfen wurde, andernfalls Konsti-Check SG 10 nach 8 Stunden Ruhe, um die natürliche Genesung einzuleiten; verliert 1 TP bei misslingen, wird dadurch jedoch nicht bewusstlos."
+    },
+    "Dying": {
+      "label": "Sterbend",
+      "description": "<p>Bewusstlos und dem Tode nahe.</p><p>Hat negative Trefferpunkten und ist nicht stabilisiert.</p><p>Kann keine Aktionen ausführen.</p><p>Im nächsten Zug, nachdem er auf negative Trefferpunkte reduziert wurde, und in allen folgenden Zügen:</p><ul><li>SG 10  Konstitutionswurf zum stabilisieren</li><li>Malus auf diesen Wurf, welcher dem momentanen negativen Wert seiner TP entspricht.</li><li>Natural 20 ist automatischen Erfolg.</li><li> Verliert 1 Trefferpunkt bei Misserfolg.</li></ul><p>Wenn Charakter negative TP = ihrem Konstitutionswert hat, stirbt sie.</p>"
+    },
+    "EnergyDrained": {
+      "label": "Lebenskraftentzug",
+      "description": ""
+    },
+    "Fascinated": {
+      "label": "Fasziniert",
+      "description": ""
+    },
+    "FlatFooted": {
+      "label": "Auf dem falschen Fuß",
+      "description": ""
+    },
+    "Immobilized": {
+      "label": "Bewegungsunfähig",
+      "description": ""
+    },
+    "Petrified": {
+      "label": "Versteinert",
+      "description": ""
+    },
+    "Slowed": {
+      "label": "Verlangsamt",
+      "description": ""
+    },
+    "Stable": {
+      "label": "Stabilisiert",
+      "description": ""
+    },
+    "Unconscious": {
+      "label": "Bewusstlos",
+      "description": ""
     }
   }
 }
