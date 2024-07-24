@@ -15,7 +15,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: []
               },
-              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.anchored"),
+              name: game.i18n.localize("PF1-Improved-Conditions.Anchored.label"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/anchored.png",
@@ -32,7 +32,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: []
               },
-              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.disabled"),
+              name: game.i18n.localize("PF1-Improved-Conditions.Disabled.label"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/disabled.png",
@@ -49,7 +49,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: []
               },
-              name: "Energy Drained",
+              name: game.i18n.localize("PF1-Improved-Conditions.EnergyDrained.label"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/drained.png",
@@ -66,7 +66,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: []
               },
-              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.dying"),
+              name: game.i18n.localize("PF1-Improved-Conditions.Dying.label"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/dying.png",
@@ -85,7 +85,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   ],
                   flags: []
               },
-              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.fascinated"),
+              name: game.i18n.localize("PF1-Improved-Conditions.Fascinated.label"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/fascinated.png",
@@ -102,7 +102,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: []
               },
-              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.flatFooted"),
+              name: game.i18n.localize("PF1-Improved-Conditions.FlatFooted.label"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/flat-footed.png",
@@ -119,7 +119,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: ["loseDexToAC"]
               },
-              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.immobilized"),
+              name: game.i18n.localize("PF1-Improved-Conditions.Immobilized.label"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/immobilized.png",
@@ -136,7 +136,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: ["loseDexToAC"]
               },
-              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.petrified"),
+              name: game.i18n.localize("PF1-Improved-Conditions.Petrified.label"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/petrified.png",
@@ -184,7 +184,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                 ],
                   flags: []
               },
-              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.slowed"),
+              name: game.i18n.localize("PF1-Improved-Conditions.Slowed.label"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/slowed.png",
@@ -201,7 +201,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: []
               },
-              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.stable"),
+              name: game.i18n.localize("PF1-Improved-Conditions.Stable.label"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/stable.png",
@@ -218,7 +218,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: []
               },
-              name: game.i18n.localize("PF1-Improved-Conditions.Conditions.unconscious"),
+              name: game.i18n.localize("PF1-Improved-Conditions.Unconscious.label"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/unconscious.png",
@@ -238,17 +238,16 @@ Hooks.on("pf1RegisterConditions", (registry) => {
 });
 
 Hooks.on('little-helper.i18n', (t) => {
-	t.conditions.anchored = 'Fixed to a particular location.<br><br>Cannot be moved by any external force, including spells like telekinesis.<br><br>Cannot perform actions requiring movement.<br>Can still attack or cast spells if they do not involve changing position.';
-	t.conditions.disabled = 'Character with 0 or stable negative hit points.<br><br>Can take a single move or standard action each round (but not both).<br>Moves at half speed.<br><br>Standard actions deal 1 damage after completion, risking negative hit points and dying.<br><br>Can take swift, immediate, and free actions.<br><br>Recovers hit points naturally if helped.<br>Otherwise, DC 10 Constitution check after 8 hours rest to start natural recovery.<br>Penalty on check equals negative hit point total.<br><br>Failure causes 1 hit point loss but does not cause unconsciousness.';
-	t.conditions.energyDrained = 'Gains one or more negative levels.<br><br>Each negative level:<br>- Cumulative -1 penalty on ability checks, attack rolls, CMB, CMD, saves, and skill checks.<br>- Reduces current and total HP by 5.<br>- Treated as one level lower for level-dependent variables (e.g., spellcasting).<br><br>If negative levels equal Hit Dice, the character dies.<br><br>Temporary energy drains:<br>- New save each day to remove (DC same as original effect).<br><br>Permanent energy drains:<br>- No daily save to remove.<br>- Can be removed by spells like restoration.<br>- Remain after revival.<br>- Must be removed for effective revival if they equal Hit Dice.<br><br>Energy drain is not a death effect.<br>Death ward grants immunity to energy drain and suspends penalties while active.';
-	t.conditions.dying = 'Unconscious and near death.<br><br>Negative hit points and not stabilized.<br><br>Can take no actions.<br><br>On next turn after being reduced to negative hit points, and all subsequent turns:<br>- DC 10 Constitution check to become stable.<br>- Penalty on roll equals negative hit point total.<br>- Natural 20 is an automatic success.<br>- Failure results in losing 1 hit point.<br><br>Stable characters do not need to make this check.<br><br>If negative hit points equal Constitution score, the character dies.';
-	t.conditions.fascinated = 'Entranced by a supernatural or spell effect.<br><br>Stands or sits quietly, taking no actions other than paying attention to the effect.<br><br>-4 penalty on skill checks made as reactions (e.g., Perception checks).<br><br>Any potential threat (e.g., hostile creature approaching) allows a new saving throw.<br>Any obvious threat (e.g., drawing a weapon, casting a spell, aiming a ranged weapon) automatically breaks the effect.<br><br>An ally can shake the fascinated creature free as a standard action.';
-	t.conditions.flatFooted = 'Has not yet acted during combat.<br><br>Loses Dexterity bonus to AC and CMD.<br>Cannot make attacks of opportunity, unless having Combat Reflexes feat or Uncanny Dodge class ability.<br><br>Characters with Uncanny Dodge retain Dexterity bonus to AC and can make attacks of opportunity before acting in the first round.<br><br>Cannot take immediate actions while flat-footed.';
-	t.conditions.immobilized = 'Unable to move from current location.<br><br>Cannot take any move actions.<br>Cannot reposition itself.<br><br>Can still perform actions that do not require movement (e.g., attacking, casting spells).';
-	t.conditions.petrified = 'Turned to stone and considered unconscious.<br><br>If cracked or broken, but pieces are joined with the body upon returning to flesh, the character is unharmed.<br><br>If the petrified body is incomplete when returning to flesh, the body remains incomplete, resulting in permanent hit point loss and/or debilitation.';
-	t.conditions.slowed = 'Movement is significantly hindered.<br><br>Movement speed is typically reduced by half.<br><br>May take fewer actions per turn, often limited to one standard action or move action.';
-	t.conditions.stable = 'No longer dying but still unconscious.<br><br>Stopped losing hit points each round while still having negative hit points.<br><br>If stabilized by aid (e.g., Heal check or magical healing), no longer loses hit points.<br><br>Can make a DC 10 Constitution check each hour to become conscious and disabled (penalty equals negative hit point total).<br><br>If stabilized without aid, still at risk of losing hit points.<br>Can make a Constitution check each hour to become stable (as if received aid), but each failed check causes 1 hit point loss.';
-	t.conditions.unconscious = 'Knocked out and helpless.<br><br>Can result from having negative hit points (but not more than the creature’s Constitution score) or from nonlethal damage exceeding current hit points.';
+	t.conditions.anchored = game.i18n.localize("PF1-Improved-Conditions.Anchored.description");
+	t.conditions.disabled = game.i18n.localize("PF1-Improved-Conditions.Disabled.description");
+	t.conditions.energyDrained = game.i18n.localize("PF1-Improved-Conditions.EnergyDrained.description");
+	t.conditions.dying = game.i18n.localize("PF1-Improved-Conditions.Dying.description");
+	t.conditions.flatFooted = game.i18n.localize("PF1-Improved-Conditions.FlatFooted.description");
+	t.conditions.immobilized = game.i18n.localize("PF1-Improved-Conditions.Immobilized.description");
+	t.conditions.petrified = game.i18n.localize("PF1-Improved-Conditions.Petrified.description");
+	t.conditions.slowed = game.i18n.localize("PF1-Improved-Conditions.Slowed.description");
+	t.conditions.stable = game.i18n.localize("PF1-Improved-Conditions.Stable.description");
+	t.conditions.unconscious = game.i18n.localize("PF1-Improved-Conditions.Unconscious.description");
 });
 
 
@@ -341,9 +340,11 @@ Hooks.on("updateWorldTime", function(worldTime, dt) {
         }
 
         if (rollResult <= 25) {
-          behavior = "acts normally";
+          // acts normally
+          behavior = game.i18n.localize("PF1-Improved-Conditions.Confused.Effects.1");
         } else if (rollResult <= 50) {
-          behavior = "does nothing but babble incoherently";
+          // does nothing
+          behavior = game.i18n.localize("PF1-Improved-Conditions.Confused.Effects.2");
         } else if (rollResult <= 75) {
           const strMod = actor.system.abilities.str.mod;
           damageRoll = new Roll(`1d8 + ${strMod}`).roll({async: false});
@@ -373,13 +374,17 @@ Hooks.on("updateWorldTime", function(worldTime, dt) {
           const itemDescription = itemUsed ? 
             (itemUsed.system.baseTypes && itemUsed.system.baseTypes.length > 0 ? 
               itemUsed.system.baseTypes[0].toLowerCase() : itemUsed.name.toLowerCase()) : 
-            "their fists";
+            // "Their Fists to be removed as it's covered in localization now"
+              "their fists"; 
 
           behavior = itemUsed ? 
-            `draws their ${itemDescription} and inflicts ${damageRoll.total} points of damage to themselves with it.` : 
-            `strikes themselves in the face with ${itemDescription}, causing ${damageRoll.total} points of bludgeoning damage.`;
+            // Weapon available 
+            game.i18n.format("PF1-Improved-Conditions.Confused.Effects.3a", {itemName: itemDescription, damage: damageRoll.total}) :
+            // No weapon available 
+            game.i18n.format("PF1-Improved-Conditions.Confused.Effects.3b", {damage: damageRoll.total}) ;
         } else {
-          behavior = "attacks the nearest creature";
+          // Attack nearest target
+          behavior = game.i18n.localize("PF1-Improved-Conditions.Confused.Effects.4");
         }
 
         let tokenContent = `<div class="IC-token" data-uuid="${token.document.uuid}" style="margin-bottom: 8px;">
