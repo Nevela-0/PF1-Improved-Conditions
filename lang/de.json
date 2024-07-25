@@ -15,43 +15,43 @@
     },
     "Disabled": {
       "label": "Kampfunfähig",
-      "description": "<p>Hat 0 TP oder negative TP, ist aber stabilisiert und bei Bewusstsein.</p><p>kann jede Runde eine Bewegungsaktion oder eine Standard-Aktion ausführen (nicht aber beides). kann Schnelle, Augenblickliche und Freie Aktionen ausführen.</p><p>Regeneriert auf natürliche Weise Trefferpunkte, wenn ihm geholfen wurde, andernfalls Konsti-Check SG 10 nach 8 Stunden Ruhe, um die natürliche Genesung einzuleiten; verliert 1 TP bei misslingen, wird dadurch jedoch nicht bewusstlos."
+      "description": "<p>Hat 0 TP oder negative TP, ist aber stabilisiert und bei Bewusstsein.</p><p>kann jede Runde eine Bewegungsaktion oder eine Standard-Aktion ausführen (nicht aber beides). kann Schnelle, Augenblickliche und Freie Aktionen ausführen.</p>"
     },
     "Dying": {
       "label": "Sterbend",
-      "description": "<p>Bewusstlos und dem Tode nahe.</p><p>Hat negative Trefferpunkten und ist nicht stabilisiert.</p><p>Kann keine Aktionen ausführen.</p><p>Im nächsten Zug, nachdem er auf negative Trefferpunkte reduziert wurde, und in allen folgenden Zügen:</p><ul><li>SG 10  Konstitutionswurf zum stabilisieren</li><li>Malus auf diesen Wurf, welcher dem momentanen negativen Wert seiner TP entspricht.</li><li>Natural 20 ist automatischen Erfolg.</li><li> Verliert 1 Trefferpunkt bei Misserfolg.</li></ul><p>Wenn Charakter negative TP = ihrem Konstitutionswert hat, stirbt sie.</p>"
+      "description": "<p>Hat negative Trefferpunkten und ist nicht stabilisiert.</p><p>Kann keine Aktionen ausführen.</p><p>Wenn Charakter negative TP = ihrem Konstitutionswert hat, stirbt er.</p>"
     },
     "EnergyDrained": {
       "label": "Lebenskraftentzug",
-      "description": ""
+      "description": "<p>Hat eine oder mehrere Negative Stufen</p>"
     },
     "Fascinated": {
       "label": "Fasziniert",
-      "description": ""
+      "description": "<p>Steht oder sitzt ganz ruhig und macht nichts, außer den faszinierenden Effekt zu beobachten</p><p>-4 auf Wahrnehmung</p>"
     },
     "FlatFooted": {
       "label": "Auf dem falschen Fuß",
-      "description": ""
+      "description": "<p>Kann keine Gelegenheitsangriffe ausführen</p><p>Verliert GE-Bonus auf AC</p>"
     },
     "Immobilized": {
       "label": "Bewegungsunfähig",
-      "description": ""
+      "description": "<p>Kann sich nicht vom Fleck bewegen</p>"
     },
     "Petrified": {
       "label": "Versteinert",
-      "description": ""
+      "description": "<p>Wurde zu Stein verwandelt und ist bewusstlos</p>"
     },
     "Slowed": {
       "label": "Verlangsamt",
-      "description": ""
+      "description": "<p>– 1 auf Angriffswurfe, RK und Reflexwürfe.</p><p>Kann nur eine Bewegungsaktion oder Standard-Aktion ausführen.</p><p>Grundbewegungsrate halbiert.</p>"
     },
     "Stable": {
       "label": "Stabilisiert",
-      "description": ""
+      "description": "<p>hat negative Trefferpunkte, verliert aber keine weiteren und ist bewusstlos</p>"
     },
     "Unconscious": {
       "label": "Bewusstlos",
-      "description": ""
+      "description": "<p>Ist durch negative TP oder nichttödlichen Schaden KO geschlagen und hilflos</p>"
     }
   }
 }
