@@ -238,16 +238,16 @@ Hooks.on("pf1RegisterConditions", (registry) => {
 });
 
 Hooks.on('little-helper.i18n', (t) => {
-	t.conditions.anchored = game.i18n.localize("PF1-Improved-Conditions.Anchored.description");
-	t.conditions.disabled = game.i18n.localize("PF1-Improved-Conditions.Disabled.description");
-	t.conditions.energyDrained = game.i18n.localize("PF1-Improved-Conditions.EnergyDrained.description");
-	t.conditions.dying = game.i18n.localize("PF1-Improved-Conditions.Dying.description");
-	t.conditions.flatFooted = game.i18n.localize("PF1-Improved-Conditions.FlatFooted.description");
-	t.conditions.immobilized = game.i18n.localize("PF1-Improved-Conditions.Immobilized.description");
-	t.conditions.petrified = game.i18n.localize("PF1-Improved-Conditions.Petrified.description");
-	t.conditions.slowed = game.i18n.localize("PF1-Improved-Conditions.Slowed.description");
-	t.conditions.stable = game.i18n.localize("PF1-Improved-Conditions.Stable.description");
-	t.conditions.unconscious = game.i18n.localize("PF1-Improved-Conditions.Unconscious.description");
+	t.conditions.anchored = "PF1-Improved-Conditions.Anchored.description";
+	t.conditions.disabled = "PF1-Improved-Conditions.Disabled.description";
+	t.conditions.energyDrained = "PF1-Improved-Conditions.EnergyDrained.description";
+	t.conditions.dying = "PF1-Improved-Conditions.Dying.description";
+	t.conditions.flatFooted = "PF1-Improved-Conditions.FlatFooted.description";
+	t.conditions.immobilized = "PF1-Improved-Conditions.Immobilized.description";
+	t.conditions.petrified = "PF1-Improved-Conditions.Petrified.description";
+	t.conditions.slowed = "PF1-Improved-Conditions.Slowed.description";
+	t.conditions.stable = "PF1-Improved-Conditions.Stable.description";
+	t.conditions.unconscious = "PF1-Improved-Conditions.Unconscious.description";
 });
 
 
