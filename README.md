@@ -56,3 +56,6 @@ Once the module is installed and enabled, configure which conditions you'd like 
 - **Nevela**: Lead developer and creator of the Automate Damage module.
 - **Contributors**: The PF1E system and module developers for their support.
 
+## Open Game License
+
+This module includes content covered under the Open Game License (OGL). For more details, please refer to the [OGL license](./ogl.md).

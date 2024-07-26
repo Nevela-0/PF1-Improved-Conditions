@@ -44,5 +44,7 @@
         "folder": "Improved Conditions"
       }
     }
-  ]
+  ],
+  "manifest": "https://github.com/Nevela-0/PF1-Improved-Conditions/releases/latest/download/module.json",
+  "download": "https://github.com/Nevela-0/PF1-Improved-Conditions/releases/latest/download/PF1-Improved-Conditions.zip"
 }
