@@ -29,6 +29,18 @@
       "flags": {}
     }
   ],
+  "languages": [
+    {
+       "lang": "en",
+       "name": "English",
+       "path": "lang/en.json"
+    },
+    {
+      "lang": "de",
+      "name": "Deutsch (German)",
+      "path": "lang/de.json"
+    }
+  ],
   "esmodules": ["scripts/main.js", "scripts/sockets.js"],
   "socket": true,
   "packs": [
