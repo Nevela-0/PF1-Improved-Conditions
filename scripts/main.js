@@ -16,6 +16,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   flags: []
               },
               name: game.i18n.localize("PF1-Improved-Conditions.Anchored.label"),
+              name: game.i18n.localize("PF1-Improved-Conditions.Anchored.label"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/anchored.png",
@@ -32,6 +33,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: []
               },
+              name: game.i18n.localize("PF1-Improved-Conditions.EnergyDrained.label"),
               name: game.i18n.localize("PF1-Improved-Conditions.EnergyDrained.label"),
               showInAction: true,
               showInDefense: true,
@@ -52,6 +54,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   flags: []
               },
               name: game.i18n.localize("PF1-Improved-Conditions.Fascinated.label"),
+              name: game.i18n.localize("PF1-Improved-Conditions.Fascinated.label"),
               showInAction: true,
               showInDefense: true,
               texture: "modules/pf1-improved-conditions/icons/fascinated.png",
@@ -68,6 +71,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                   changes: [],
                   flags: ["loseDexToAC"]
               },
+              name: game.i18n.localize("PF1-Improved-Conditions.Immobilized.label"),
               name: game.i18n.localize("PF1-Improved-Conditions.Immobilized.label"),
               showInAction: true,
               showInDefense: true,
@@ -116,6 +120,7 @@ Hooks.on("pf1RegisterConditions", (registry) => {
                 ],
                   flags: []
               },
+              name: game.i18n.localize("PF1-Improved-Conditions.Slowed.label"),
               name: game.i18n.localize("PF1-Improved-Conditions.Slowed.label"),
               showInAction: true,
               showInDefense: true,

@@ -51,6 +51,8 @@ Once the module is installed and enabled, configure which conditions you'd like 
 - **Contributors**: The PF1E system and module developers for their support.
 - **[McGreger](https://github.com/McGreger)**: Help with German localization.
 - **Condition Icons**: Icons used were picked from [game-icons.net](https://game-icons.net/about.html).
+- **[McGreger](https://github.com/McGreger)**: Help with German localization.
+- **Condition Icons**: Icons used were picked from [game-icons.net](https://game-icons.net/about.html).
 
 
 ## Open Game License
