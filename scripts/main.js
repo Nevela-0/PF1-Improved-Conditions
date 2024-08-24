@@ -140,11 +140,11 @@ Hooks.on("init", (app, html, data) => {
 });
 
 Hooks.on('little-helper.i18n', (t) => {
-	t.conditions.anchored = 'Fixed to a particular location.<br><br>Cannot be moved by any external force, including spells like telekinesis.<br><br>Cannot perform actions requiring movement.<br>Can still attack or cast spells if they do not involve changing position.';
-	t.conditions.energyDrained = 'Gains one or more negative levels.<br><br>Each negative level:<br>- Cumulative -1 penalty on ability checks, attack rolls, CMB, CMD, saves, and skill checks.<br>- Reduces current and total HP by 5.<br>- Treated as one level lower for level-dependent variables (e.g., spellcasting).<br><br>If negative levels equal Hit Dice, the character dies.<br><br>Temporary energy drains:<br>- New save each day to remove (DC same as original effect).<br><br>Permanent energy drains:<br>- No daily save to remove.<br>- Can be removed by spells like restoration.<br>- Remain after revival.<br>- Must be removed for effective revival if they equal Hit Dice.<br><br>Energy drain is not a death effect.<br>Death ward grants immunity to energy drain and suspends penalties while active.';
+	t.conditions.anchored = "PF1-Improved-Conditions.Anchored.description";
+	t.conditions.energyDrained = "PF1-Improved-Conditions.EnergyDrained.description";
 	t.conditions.fascinated = 'Entranced by a supernatural or spell effect.<br><br>Stands or sits quietly, taking no actions other than paying attention to the effect.<br><br>-4 penalty on skill checks made as reactions (e.g., Perception checks).<br><br>Any potential threat (e.g., hostile creature approaching) allows a new saving throw.<br>Any obvious threat (e.g., drawing a weapon, casting a spell, aiming a ranged weapon) automatically breaks the effect.<br><br>An ally can shake the fascinated creature free as a standard action.';
-	t.conditions.immobilized = 'Unable to move from current location.<br><br>Cannot take any move actions.<br>Cannot reposition itself.<br><br>Can still perform actions that do not require movement (e.g., attacking, casting spells).';
-	t.conditions.slowed = 'Movement is significantly hindered.<br><br>Movement speed is typically reduced by half.<br><br>May take fewer actions per turn, often limited to one standard action or move action.';
+	t.conditions.immobilized = "PF1-Improved-Conditions.Slowed.description";
+	t.conditions.slowed = "PF1-Improved-Conditions.Slowed.description";
 });
 
 Hooks.on('renderTokenHUD', (app, html, data) => {
@@ -243,9 +243,9 @@ function getBehaviorData(actor, rollResult) {
   const damageType = "bludgeoning"; // Default damage type
 
   if (rollResult <= 25) {
-    behavior = "acts normally";
+    behavior = game.i18n.localize("PF1-Improved-Conditions.Confused.Effects.1");
   } else if (rollResult <= 50) {
-    behavior = "does nothing but babble incoherently";
+    behavior = game.i18n.localize("PF1-Improved-Conditions.Confused.Effects.2");
   } else if (rollResult <= 75) {
     const strMod = actor.system?.abilities?.str.mod;
     damageRoll = new Roll(`1d8 + ${strMod}`).roll({async: false});
@@ -255,11 +255,14 @@ function getBehaviorData(actor, rollResult) {
     itemUsed = chooseRandomItem(actor, ["weapon", "attack"]);
     const itemDescription = itemUsed ? (itemUsed.system?.baseTypes?.[0]?.toLowerCase() || itemUsed?.name.toLowerCase()) : "their fists";
 
-    behavior = itemUsed ?
-      `draws their ${itemDescription} and inflicts ${damageRoll.total} points of damage to themselves with it.` :
-      `strikes themselves in the face with ${itemDescription}, causing ${damageRoll.total} points of bludgeoning damage.`;
+    behavior = itemUsed ? 
+      // Weapon available 
+      game.i18n.format("PF1-Improved-Conditions.Confused.Effects.3a", {itemName: itemDescription, damage: damageRoll.total}) :
+      // No weapon available 
+      game.i18n.format("PF1-Improved-Conditions.Confused.Effects.3b", {damage: damageRoll.total}) ;
   } else {
-    behavior = "attacks the nearest creature";
+    // Attack nearest target
+    behavior = game.i18n.localize("PF1-Improved-Conditions.Confused.Effects.4");
   }
 
   return { behavior, damageRoll, encodedRollData, tooltip, itemUsed };
