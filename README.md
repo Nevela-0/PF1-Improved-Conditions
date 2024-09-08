@@ -27,7 +27,7 @@ These additional conditions will become sub-conditions in future updates and wor
 - **Energy Drained**: Automatically applied to tokens with above 0 negative levels. This can be toggled off in the module's settings.
 - **Entangled**: Applies the slowed condition automatically and prompts concentration checks for spellcasting. This can be toggled off in the module's settings.
 - **Fascinated**: Applies a -4 penalty on perception checks.
-- **Flat-Footed (WIP)**: Applied automatically based on initiative rolls, with considerations for abilities like Uncanny Dodge; this can be toggled off in the module's settings.
+- **Flat-Footed**: Applied automatically based on initiative rolls, with considerations for abilities like Uncanny Dodge; this can be toggled off in the module's settings.
 - **Grappled**: Applies the slowed condition automatically and prompts concentration checks for spellcasting with somatic components. This can be toggled off in the module's settings.
 - **Immobilized**: Renders the token immovable and denies dex bonus to AC. This will become a sub-condition in future updates; this can be toggled off in the module's settings.
 - **Slowed**: Applied automatically to tokens with conditions like "blind", "disabled", "entangled", or "exhausted"; reduces movement speeds by half.

@@ -142,7 +142,7 @@ Hooks.on("init", (app, html, data) => {
 Hooks.on('little-helper.i18n', (t) => {
 	t.conditions.anchored = "PF1-Improved-Conditions.Anchored.description";
 	t.conditions.energyDrained = "PF1-Improved-Conditions.EnergyDrained.description";
-	t.conditions.fascinated = 'Entranced by a supernatural or spell effect.<br><br>Stands or sits quietly, taking no actions other than paying attention to the effect.<br><br>-4 penalty on skill checks made as reactions (e.g., Perception checks).<br><br>Any potential threat (e.g., hostile creature approaching) allows a new saving throw.<br>Any obvious threat (e.g., drawing a weapon, casting a spell, aiming a ranged weapon) automatically breaks the effect.<br><br>An ally can shake the fascinated creature free as a standard action.';
+	t.conditions.fascinated = "PF1-Improved-Conditions.Fascinated.description";
 	t.conditions.immobilized = "PF1-Improved-Conditions.Slowed.description";
 	t.conditions.slowed = "PF1-Improved-Conditions.Slowed.description";
 });
@@ -186,11 +186,10 @@ Hooks.on('renderTokenHUD', (app, html, data) => {
   }
 });
 
-// Handle the "Confused" condition at the start of each round
 Hooks.on("updateWorldTime", function(worldTime, dt) {
   if (!game.settings.get('pf1-improved-conditions', 'handleConfused')) return;
   const tokens = canvas.tokens.placeables;
-  let content = `<div class="card-content">`;
+  let content = `<div class="confusion-message-content">`;
   let hasContent = false;
 
   const privateMessages = {};
@@ -226,12 +225,20 @@ Hooks.on("updateWorldTime", function(worldTime, dt) {
     });
   });
 
-  if (hasContent && content.trim() !== `<div class="card-content"></div>`) {
+  if (hasContent && content.trim() !== `<div class="confusion-message-content"></div>`) {
     content += tokenContents.length > 1 ? tokenContents.join('<div style="border-top: 2px solid black; margin: 8px 0;"></div>') : tokenContents[0];
     content += `</div>`;
-    ChatMessage.create({
-      content: content,
-      speaker: { alias: "Confusion Effect" }
+    createConfusionEffectMessage({
+      content: '',
+      token: token,
+      damageRoll: damageRoll,
+      behavior: behavior,
+      encodedRollData: encodedRollData,
+      tooltip: tooltip,
+      itemUsed: itemUsed,
+      speakerAlias: "Confusion Effect",
+      whisper: [],
+      isPrivate: false
     });
   }
 
@@ -256,14 +263,11 @@ function getBehaviorData(actor, rollResult) {
     const itemDescription = itemUsed ? (itemUsed.system?.baseTypes?.[0]?.toLowerCase() || itemUsed?.name.toLowerCase()) : "their fists";
 
     behavior = itemUsed ? 
-      // Weapon available 
       game.i18n.format("PF1-Improved-Conditions.Confused.Effects.3a", {itemName: itemDescription, damage: damageRoll.total}) :
-      // No weapon available 
-      game.i18n.format("PF1-Improved-Conditions.Confused.Effects.3b", {damage: damageRoll.total}) ;
-  } else {
-    // Attack nearest target
-    behavior = game.i18n.localize("PF1-Improved-Conditions.Confused.Effects.4");
-  }
+    game.i18n.format("PF1-Improved-Conditions.Confused.Effects.3b", {damage: damageRoll.total}) ;
+    } else {
+      behavior = game.i18n.localize("PF1-Improved-Conditions.Confused.Effects.4");
+    }
 
   return { behavior, damageRoll, encodedRollData, tooltip, itemUsed };
 }
@@ -287,19 +291,34 @@ function handleConfusionCondition(combat, combatData) {
 
   const { behavior, damageRoll, encodedRollData, tooltip, itemUsed } = behaviorData;
 
-  let tokenContent = createTokenContent(token, behavior, damageRoll, encodedRollData, tooltip, itemUsed);
-  let content = `<div class="card-content">${tokenContent}</div>`;
+  const isHiddenOrInvisible = token.document.hidden || actor.statuses.has("invisible");
+  let whisperTargets = [];
 
-  ChatMessage.create({
-    content: content,
-    speaker: { alias: "Confusion Effect" }
+  if (isHiddenOrInvisible && (actor.hasPlayerOwner || actor.activeOwner?.active)) {
+    const activeOwner = actor.activeOwner?.id;
+    const gmId = game.users.find(user => user.isGM).id;
+    const whisperSet = new Set([activeOwner, gmId].filter(Boolean));
+    whisperTargets = Array.from(whisperSet);
+  }
+
+  createConfusionEffectMessage({
+    content: '',
+    token: token,
+    damageRoll: damageRoll,
+    behavior: behavior,
+    encodedRollData: encodedRollData,
+    tooltip: tooltip,
+    itemUsed: itemUsed,
+    speakerAlias: "Confusion Effect",
+    whisper: whisperTargets,
+    isPrivate: isHiddenOrInvisible
   });
 }
 
 // Function to encode roll data for tooltip
 function encodeRollData(damageRoll, strMod) {
   const rollData = {
-    class: "DamageRoll",
+    class: "Roll",
     options: {
       damageType: {
         values: ["bludgeoning"],
@@ -335,23 +354,20 @@ function createTokenContent(token, behavior, damageRoll, encodedRollData, toolti
       <div class="pf1 chat-card damage-card damage" data-token-id="${token.document.uuid}">
         <table>
           <thead>
-            <tr><th>Damage</th></tr>
+            <tr><th> Damage </th></tr>
           </thead>
           <tbody>
             <tr><td>
-              <a class="inline-roll inline-dsn-hidden inline-result" data-roll="${encodedRollData}" data-tooltip="${tooltip}">
+              <a class="inline-roll inline-dsn-hidden inline-result" data-tooltip="${tooltip}" data-roll="${encodedRollData}">
                 <i class="fas fa-dice-d20"></i> ${damageRoll.total}
               </a>
             </td></tr>
           </tbody>
         </table>
-        <div class="flexcol card-buttons">
-          <div class="card-button-group flexcol">
-            <label>Damage</label>
-            <div class="flexrow">
-              <button type="button" data-action="applyDamage" data-value="${damageRoll.total}">Apply</button>
-              <button type="button" data-action="applyDamage" data-value="${halfDamage}">Apply Half</button>
-            </div>
+        <div class="card-buttons">
+          <div class="card-button-group flexrow">
+            <button type="button" data-action="applyDamage" data-value="${damageRoll.total}">Apply</button>
+            <button type="button" data-action="applyDamage" data-value="${halfDamage}">Apply Half</button>
           </div>
         </div>
       </div>`;
@@ -375,7 +391,7 @@ function handlePrivateMessage(actor, token, tokenContent, privateMessages) {
 
   if (!privateMessages[whisperKey]) {
     privateMessages[whisperKey] = {
-      content: `<div class="card-content">`,
+      content: `<div class="confusion-message-content">`,
       whisper: Array.from(whisperIds),
       tokenCount: 0
     };
@@ -391,11 +407,45 @@ function sendPrivateMessages(privateMessages) {
       message.content = message.content.replace(/<\/div><div class="IC-token"/g, '</div><div style="border-top: 2px solid black; margin: 8px 0;"></div><div class="IC-token"');
     }
     message.content += `</div>`;
-    ChatMessage.create({
+    createConfusionEffectMessage({
       content: message.content,
-      speaker: { alias: "Confusion Effect" },
-      whisper: message.whisper
+      token: null,
+      damageRoll: null,
+      behavior: null,
+      encodedRollData: null,
+      tooltip: null,
+      itemUsed: null,
+      speakerAlias: "Confusion Effect",
+      whisper: message.whisper,
+      isPrivate: true
     });
+  });
+}
+
+function createConfusionEffectMessage({
+  content,
+  token,
+  damageRoll,
+  behavior,
+  encodedRollData,
+  tooltip,
+  itemUsed,
+  speakerAlias = "Confusion Effect",
+  whisper = [],
+  isPrivate = false,
+}) {
+  let tokenContent = createTokenContent(token, behavior, damageRoll, encodedRollData, tooltip, itemUsed);
+  if (!isPrivate) {
+    content += `<div class="confusion-message-content">${tokenContent}</div>`;
+  } else {
+    content = tokenContent;s
+  }
+
+  ChatMessage.create({
+    content: content,
+    speaker: { alias: speakerAlias },
+    rolls: damageRoll ? [damageRoll] : [],
+    whisper: whisper
   });
 }
 
@@ -429,36 +479,57 @@ Hooks.on("renderChatMessage", (message, html, data) => {
 });
 
 Hooks.on("pf1PreActionUse", (action) => {
-  if (game.settings.get('pf1-improved-conditions', 'handleNauseated') ||
-  game.settings.get('pf1-improved-conditions', 'handleEntangledGrappled')) {
-    const activationTypes = ["nonaction", "passive", "free", "swift", "immediate", "move", "standard", "full", "attack", "aoo", "round", "minute", "hour", "special"]
-    const actionType = action.action.activation?.type;
-    const held = action.action.data.held || action.item.system.held;
-    const token = action.token;
-    const actor = token.actor;
+  const activationTypes = ["nonaction", "passive", "free", "swift", "immediate", "move", "standard", "full", "attack", "aoo", "round", "minute", "hour", "special"];
+  const actionType = action.action.activation?.type;
+  const held = action.action.data.held || action.item.system.held;
+  const token = action.token;
+  const actor = token.actor;
 
-    if (game.settings.get('pf1-improved-conditions', 'handleEntangledGrappled') && actor.statuses.has("grappled") && held === "2h") {
-      action.shared.reject=true
+  const grappledHandling = game.settings.get('pf1-improved-conditions', 'grappledHandling');
+  if (grappledHandling && actor.statuses.has("grappled") && held === "2h") {
+    if (grappledHandling === "disabled") return;
+    if (grappledHandling === "strict") {
+      action.shared.reject = true;
       ui.notifications.info(`${token.name} cannot perform this action due to being grappled and it requires two hands.`);
+    } else if (grappledHandling === "lenient") {
+      ui.notifications.info(`${token.name} is grappled but can perform the action under lenient handling.`);
     }
+  }
 
-    if (game.settings.get('pf1-improved-conditions', 'handleNauseated') && actor.statuses.has("nauseated") && actionType !== "move") {
+  const nauseatedHandling = game.settings.get('pf1-improved-conditions', 'nauseatedHandling');
+  if (nauseatedHandling && actor.statuses.has("nauseated")) {
+    if (nauseatedHandling === "disabled") return;
+    if (nauseatedHandling === "strict" && actionType !== "move") {
       action.shared.reject = true;
-      ui.notifications.info(`${token.name} cannot perform this action due to being nauseated and only move actions are allowed.`);
+      ui.notifications.info(`${token.name} cannot perform this action due to being nauseated; only move actions are allowed.`);
+    } else if (nauseatedHandling === "lenient") {
+      ui.notifications.info(`${token.name} is nauseated but can perform other actions under lenient handling.`);
     }
+  }
 
-    if (game.settings.get('pf1-improved-conditions', 'handleSqueezing') && actor.statuses.has("squeezing") && (actionType == "attack" || actionType == "aoo")) {
+  const squeezingHandling = game.settings.get('pf1-improved-conditions', 'squeezingHandling');
+  if (squeezingHandling && actor.statuses.has("squeezing")) {
+    if (squeezingHandling === "disabled") return;
+    if (squeezingHandling === "strict" && (actionType === "attack" || actionType === "aoo")) {
       action.shared.reject = true;
-      ui.notifications.info(`${token.name} cannot perform attacks while squeezing.`);
+      ui.notifications.info(`${token.name} cannot perform attack actions due to being squeezed.`);
+    } else if (squeezingHandling === "lenient") {
+      ui.notifications.info(`${token.name} is squeezing but can perform attacks under lenient handling.`);
     }
   }
 });
 
 Hooks.on('pf1PreActorRollConcentration', (actor, rollContext) => {
-  if (game.settings.get('pf1-improved-conditions', 'handleNauseated') && rollContext.token?.actor?.statuses?.has("nauseated")) {
-    const token = rollContext.token
-    ui.notifications.info(`${token.name} cannot perform this action due to being nauseated and only move actions are allowed.`);
-    return false;
+  const nauseatedHandling = game.settings.get('pf1-improved-conditions', 'nauseatedHandling');
+  if (nauseatedHandling && rollContext.token?.actor?.statuses?.has("nauseated")) {
+    if (nauseatedHandling === "disabled") return true; // Allow action
+    const token = rollContext.token;
+    if (nauseatedHandling === "strict") {
+      ui.notifications.info(`${token.name} cannot perform this action due to being nauseated; only move actions are allowed.`);
+      return false; // Cancel action
+    } else if (nauseatedHandling === "lenient") {
+      ui.notifications.info(`${token.name} is nauseated but can perform this action under lenient handling.`);
+    }
   }
 });
 
@@ -502,16 +573,14 @@ Hooks.on("pf1PostActionUse", async (action) => {
                 const choice = await socket.executeAsUser("promptHTKChoice", playerOwnerId, actor.id);
 
                 if (choice === "fight") {
-                    await actor.setFlag('pf1-improved-conditions', 'continueFighting', true);
                     actor.update({ "system.attributes.hp.value": newHp });
                     ui.notifications.info(`${token.name} takes 1 damage for performing a strenuous activity.`);
                 } else {
-                    await actor.setFlag('pf1-improved-conditions', 'continueFighting', false);
-                    actor.setCondition("disabled", false);
-                    actor.setCondition("dying", true);
+                    await actor.setCondition("disabled", false);
+                    await actor.setCondition("dying", true);
                     actor.update({ "system.attributes.hp.value": newHp });
                     if (!game.settings.get('pf1-improved-conditions', 'unconsciousAtNegativeHP')) {
-                      actor.setCondition("unconscious", true);
+                      await actor.setCondition("unconscious", true);
                     };
                     ui.notifications.info(`${token.name} falls unconscious.`);
                 }
@@ -559,7 +628,6 @@ Hooks.on("pf1PostActionUse", async (action) => {
 const flatFootedTracker = new Map();
 
 Hooks.on('combatStart', async (combat) => {
-  console.log(combat);
   restoreFlatFootedTracker(combat);
 
   const turnOrder = combat.turns;
@@ -623,12 +691,27 @@ async function handleConfusionOnCombatStart(combatant, token, turnOrder) {
 
   const { behavior, damageRoll, encodedRollData, tooltip, itemUsed } = behaviorData;
 
-  let tokenContent = createTokenContent(token, behavior, damageRoll, encodedRollData, tooltip, itemUsed);
-  let content = `<div class="card-content">${tokenContent}</div>`;
+  const isHiddenOrInvisible = token.document.hidden || actor.statuses.has("invisible");
+  let whisperTargets = [];
 
-  await ChatMessage.create({
-    content: content,
-    speaker: { alias: "Confusion Effect" }
+  if (isHiddenOrInvisible && (actor.hasPlayerOwner || actor.activeOwner?.active)) {
+    const activeOwner = actor.activeOwner?.id;
+    const gmId = game.users.find(user => user.isGM).id;
+    const whisperSet = new Set([activeOwner, gmId].filter(Boolean));
+    whisperTargets = Array.from(whisperSet);
+  }
+
+  createConfusionEffectMessage({
+    content: '',
+    token: token,
+    damageRoll: damageRoll,
+    behavior: behavior,
+    encodedRollData: encodedRollData,
+    tooltip: tooltip,
+    itemUsed: itemUsed,
+    speakerAlias: "Confusion Effect",
+    whisper: whisperTargets,
+    isPrivate: isHiddenOrInvisible
   });
 }
 
@@ -650,7 +733,14 @@ function restoreFlatFootedTracker(combat) {
 
 // Function to update the flatFootedTracker flag
 function updateFlatFootedTracker(combat) {
-  const trackerData = Object.fromEntries(flatFootedTracker);
+  const trackerData = Array.from(flatFootedTracker.entries()).reduce((acc, [tokenId, data]) => {
+      acc[tokenId] = {
+          wasFlatFooted: data.wasFlatFooted,
+          removalInfo: data.removalInfo
+      };
+      return acc;
+  }, {});
+
   combat.setFlag('pf1-improved-conditions', 'flatFootedTracker', trackerData);
 }
 
@@ -778,12 +868,27 @@ async function handleConfusionForFirstToken(token) {
 
   const { behavior, damageRoll, encodedRollData, tooltip, itemUsed } = behaviorData;
 
-  let tokenContent = createTokenContent(token, behavior, damageRoll, encodedRollData, tooltip, itemUsed);
-  let content = `<div class="card-content">${tokenContent}</div>`;
+  const isHiddenOrInvisible = token.document.hidden || actor.statuses.has("invisible");
+  let whisperTargets = [];
 
-  await ChatMessage.create({
-    content: content,
-    speaker: { alias: "Confusion Effect" }
+  if (isHiddenOrInvisible && (actor.hasPlayerOwner || actor.activeOwner?.active)) {
+    const activeOwner = actor.activeOwner?.id;
+    const gmId = game.users.find(user => user.isGM).id;
+    const whisperSet = new Set([activeOwner, gmId].filter(Boolean));
+    whisperTargets = Array.from(whisperSet);
+  }
+
+  createConfusionEffectMessage({
+    content: '',
+    token: token,
+    damageRoll: damageRoll,
+    behavior: behavior,
+    encodedRollData: encodedRollData,
+    tooltip: tooltip,
+    itemUsed: itemUsed,
+    speakerAlias: "Confusion Effect",
+    whisper: whisperTargets,
+    isPrivate: isHiddenOrInvisible
   });
 }
 
@@ -847,40 +952,69 @@ Hooks.on('renderCombatTracker', (app, html, data) => {
   }
 });
 
-Hooks.on('updateActor', async (actorDocument, change, options, userId) => { 
-    if (game.settings.get('pf1-improved-conditions', 'disableAtZeroHP')) {
-        const hp = actorDocument.system?.attributes?.hp;
-        if (hp.value == 0 && hp.max > 0) {
-            actorDocument.setCondition("disabled", true);
-        };
-    };
+Hooks.on('updateActor', async (actorDocument, change, options, userId) => {
+  const disableSetting = game.settings.get('pf1-improved-conditions', 'disableAtZeroHP');
+  const actorType = actorDocument.type;
 
-    if (game.settings.get('pf1-improved-conditions', 'autoApplyED')) {
-      let token = canvas.tokens.placeables.find(t => t.actor.id === actorDocument.id);
-      const ed = actorDocument.system?.attributes?.energyDrain;
-      const hd = actorDocument.system?.attributes?.hd.total
-      if (ed > 0) {
-        actorDocument.setCondition("energyDrained", true);
-        if (ed >= hd) token.toggleEffect(CONFIG.statusEffects.find(e => e.id == "dead"), { overlay: true });
-      } else {
-        actorDocument.setCondition("energyDrained", false);
-      };
-    };
-
-    if (game.settings.get('pf1-improved-conditions', 'unconsciousAtNegativeHP')) {
-      const hp = actorDocument.system?.attributes?.hp;
-      const continueFighting = await actorDocument.getFlag('pf1-improved-conditions', 'continueFighting');
-      if (hp.max > 0 && hp.value < 0 && !continueFighting) {
-          actorDocument.setCondition("unconscious", true);
-      }
+  if ((disableSetting === 'everyone' || 
+     (disableSetting === 'player' && actorType === 'character') || 
+     (disableSetting === 'npc' && actorType === 'npc'))) {
+    const hp = actorDocument.system?.attributes?.hp;
+    if (hp.value == 0 && hp.max > 0) {
+        await actorDocument.setCondition("disabled", true);
     }
+  }
 
-    if (game.settings.get('pf1-improved-conditions', 'applyDeadCondition')) {
+  if (game.settings.get('pf1-improved-conditions', 'autoApplyED')) {
+    let token = canvas.tokens.placeables.find(t => t.actor?.id === actorDocument.id);
+    const ed = actorDocument.system?.attributes?.energyDrain;
+    const hd = actorDocument.system?.attributes?.hd.total
+    if (ed > 0) {
+      await actorDocument.setCondition("energyDrained", true);
+      if (ed >= hd) token.setCondition("dead", true, { overlay: true });
+    } else {
+      await actorDocument.setCondition("energyDrained", false);
+    };
+  };
+    
+  const unconsciousSetting = game.settings.get('pf1-improved-conditions', 'unconsciousAtNegativeHP');
+  const hp = actorDocument.system?.attributes?.hp;
+  const conScore = actorDocument.system?.abilities?.con?.total;
+  
+  if ((unconsciousSetting === 'everyone' || 
+       (unconsciousSetting === 'player' && actorType === 'character') || 
+       (unconsciousSetting === 'npc' && actorType === 'npc')) && 
+      hp.value < 0 && hp.value > (conScore * -1)) {
+      await actorDocument.setCondition("unconscious", true);
+  }
+
+  const deadConditionSetting = game.settings.get('pf1-improved-conditions', 'applyDeadCondition');
+
+  if ((deadConditionSetting === 'everyone' || 
+       (deadConditionSetting === 'player' && actorType === 'character') || 
+       (deadConditionSetting === 'npc' && actorType === 'npc') ||
+       (deadConditionSetting === 'player-negative-con-npc-negative-hp')) && !actorDocument.hasCondition("dead")) {
+  
       const hp = actorDocument.system?.attributes?.hp;
       const conScore = actorDocument.system?.abilities?.con?.total;
-      if (hp.max > 0 && hp.value <= (conScore * -1)) {
-          actorDocument.toggleEffect(CONFIG.statusEffects.find(e => e.id == "dead"), { overlay: true });
-          ui.notifications.info(`${actorDocument.name} has died due to reaching HP equal to or below their negative Constitution score.`);
+  
+      if (deadConditionSetting === 'player-negative-con-npc-negative-hp') {
+          if (actorType === 'character') {
+            if (hp.max > 0 && hp.value <= (conScore * -1)) {
+              await actorDocument.setCondition("dead", true, { overlay: true });
+                ui.notifications.info(`${actorDocument.name} has died due to reaching HP equal to or below their negative Constitution score.`);
+            }
+          } else if (actorType === 'npc') {
+            if (hp.max > 0 && hp.value <= 0) {
+              await actorDocument.setCondition("dead", true, { overlay: true });
+                ui.notifications.info(`${actorDocument.name} has died due to reaching 0 or negative HP.`);
+            }
+          }
+      } else {
+        if (hp.max > 0 && hp.value <= (conScore * -1)) {
+          await actorDocument.setCondition("dead", true, { overlay: true });
+            ui.notifications.info(`${actorDocument.name} has died due to reaching HP equal to or below their negative Constitution score.`);
+        }
       }
   }
 });
