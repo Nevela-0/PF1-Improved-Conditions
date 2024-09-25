@@ -953,6 +953,21 @@ Hooks.on('renderCombatTracker', (app, html, data) => {
 });
 
 Hooks.on('updateActor', async (actorDocument, change, options, userId) => {
+  if (!actorDocument.isOwner) return; // Exit the hook early if the user is not the owner of a token.
+
+  let ownerUsers = game.users.filter(u => actorDocument.testUserPermission(u, 'OWNER'));
+
+  let nonGMOwners = ownerUsers.filter(u => !u.isGM);
+
+  let preferredUserId;
+  if (nonGMOwners.length > 0) {
+    preferredUserId = nonGMOwners[0].id;
+  } else {
+    preferredUserId = ownerUsers[0].id;
+  }
+
+  if (game.user.id !== preferredUserId) return;
+
   const disableSetting = game.settings.get('pf1-improved-conditions', 'disableAtZeroHP');
   const actorType = actorDocument.type;
 
