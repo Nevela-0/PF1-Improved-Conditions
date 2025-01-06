@@ -143,7 +143,7 @@ Hooks.on('little-helper.i18n', (t) => {
 	t.conditions.anchored = "PF1-Improved-Conditions.Anchored.description";
 	t.conditions.energyDrained = "PF1-Improved-Conditions.EnergyDrained.description";
 	t.conditions.fascinated = "PF1-Improved-Conditions.Fascinated.description";
-	t.conditions.immobilized = "PF1-Improved-Conditions.Slowed.description";
+	t.conditions.immobilized = "PF1-Improved-Conditions.Immobilized.description";
 	t.conditions.slowed = "PF1-Improved-Conditions.Slowed.description";
 });
 
