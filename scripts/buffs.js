@@ -95,16 +95,24 @@ export async function handleBuffAutomation(action) {
         durationValue = rawDurationValue;
       }
       
-      const targets = isSelfTargeting 
-        ? [action.token]
-        : (action.shared.targets || []);
+      let targets = [];
+      if (isSelfTargeting) {
+        targets = [action.token];
+        if (action.shared.targets.length > 0) {
+          for (const t of action.shared.targets) {
+            if (t.id !== action.token.id) targets.push(t);
+          }
+        }
+      } else {
+        targets = action.shared.targets || [];
+      }
       
       let filteredTargets = targets;
       const filteringMode = game.settings.get(MODULE.ID, 'buffTargetFiltering');
       
       if (filteringMode === "byDisposition") {
         filteredTargets = targets.filter(target => {
-          const targetDisposition = target.document.disposition;
+          const targetDisposition = target.document ? target.document.disposition : target.disposition;
           const actionDisposition = action.token.disposition;
           return targetDisposition === actionDisposition;
         });
@@ -166,20 +174,22 @@ export async function findMatchingBuffs(name) {
   if (!game.settings.get(MODULE.ID, 'automaticBuffs')) {
     return [];
   }
-  
-  const matchingBuffs = [];
+
   const normalizedName = name.toLowerCase();
-  
+  let exactMatches = [];
+  let partialMatches = [];
+
   try {
     const compendia = [
       "pf1.buffs",
     ];
-    
+
+    // Add PF-Content's Buffs compendium if it exists
     const pfContentBuffs = game.packs.get("pf-content.pf-buffs");
     if (pfContentBuffs) {
       compendia.push("pf-content.pf-buffs");
     }
-    
+
     const customCompendia = game.settings.get(MODULE.ID, 'customBuffCompendia');
     if (customCompendia && customCompendia.length > 0) {
       customCompendia.forEach(packPath => {
@@ -188,43 +198,37 @@ export async function findMatchingBuffs(name) {
         }
       });
     }
-    
+
     for (const packKey of compendia) {
       const pack = game.packs.get(packKey);
       if (!pack) {
         console.warn(`${MODULE.ID} | Compendium ${packKey} not found`);
         continue;
       }
-      
-      console.log(`${MODULE.ID} | Searching compendium: ${pack.metadata.label}`);
-      
+
       const index = await pack.getIndex();
-      
+
       const exactMatches = index.filter(i => i.name.toLowerCase() === normalizedName);
-      const partialMatches = index.filter(i => 
-        i.name.toLowerCase().includes(normalizedName) && 
+      const partialMatches = index.filter(i =>
+        i.name.toLowerCase().includes(normalizedName) &&
         !exactMatches.some(em => em._id === i._id)
       );
-      
+
       for (const entry of exactMatches) {
         const document = await pack.getDocument(entry._id);
-        
         if (document.type !== "buff") continue;
-        
-        matchingBuffs.push({
+        exactMatches.push({
           name: document.name,
           id: document.id,
           pack: packKey,
           document: document
         });
       }
-      
+
       for (const entry of partialMatches) {
         const document = await pack.getDocument(entry._id);
-        
         if (document.type !== "buff") continue;
-        
-        matchingBuffs.push({
+        partialMatches.push({
           name: document.name,
           id: document.id,
           pack: packKey,
@@ -235,8 +239,12 @@ export async function findMatchingBuffs(name) {
   } catch (error) {
     console.error(`${MODULE.ID} | Error searching for buffs:`, error);
   }
-  
-  return matchingBuffs;
+
+  if (exactMatches.length > 0) {
+    return exactMatches;
+  }
+
+  return partialMatches;
 }
 
 /**
