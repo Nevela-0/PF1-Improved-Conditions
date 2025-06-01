@@ -208,13 +208,13 @@ export async function findMatchingBuffs(name) {
 
       const index = await pack.getIndex();
 
-      const exactMatches = index.filter(i => i.name.toLowerCase() === normalizedName);
-      const partialMatches = index.filter(i =>
+      const exactEntriees = index.filter(i => i.name.toLowerCase() === normalizedName);
+      const partialEntriees = index.filter(i =>
         i.name.toLowerCase().includes(normalizedName) &&
-        !exactMatches.some(em => em._id === i._id)
+        !exactEntriees.some(em => em._id === i._id)
       );
 
-      for (const entry of exactMatches) {
+      for (const entry of exactEntriees) {
         const document = await pack.getDocument(entry._id);
         if (document.type !== "buff") continue;
         exactMatches.push({
@@ -225,7 +225,7 @@ export async function findMatchingBuffs(name) {
         });
       }
 
-      for (const entry of partialMatches) {
+      for (const entry of partialEntriees) {
         const document = await pack.getDocument(entry._id);
         if (document.type !== "buff") continue;
         partialMatches.push({
@@ -298,8 +298,14 @@ export async function promptBuffSelection(buffs, action) {
           icon: '<i class="fas fa-check"></i>',
           label: "Select",
           callback: html => {
-            const index = Number(html.find('#buff-select').val());
-            resolve(buffs[index]);
+            let selectedIndex;
+            if (typeof html.find === 'function') {
+              selectedIndex = Number(html.find('#buff-select').val());
+            } else {
+              const select = html.querySelector('#buff-select');
+              selectedIndex = select ? Number(select.value) : 0;
+            }
+            resolve(buffs[selectedIndex]);
           }
         },
         cancel: {
@@ -334,9 +340,9 @@ export async function promptTargetSelection(targets, action) {
     
     targets.forEach((target, index) => {
       const tokenName = target.name || target.actor.name;
-      const tokenImg = target.document.texture.src;
-      const targetDisposition = target.document.disposition;
-      const actionDisposition = action.token.disposition;
+      const tokenImg = target.document?.texture?.src || target.texture?.src;
+      const targetDisposition = target.document?.disposition || target?.disposition;
+      const actionDisposition = action.token?.disposition;
       const isSameDisposition = targetDisposition === actionDisposition;
       
       let dispositionName = "Unknown";
@@ -346,17 +352,11 @@ export async function promptTargetSelection(targets, action) {
       else if (targetDisposition === CONST.TOKEN_DISPOSITIONS.SECRET) dispositionName = "Secret";
       
       content += `
-        <div class="target-option" style="text-align: center; width: 100px;">
+        <div class="target-option" style="display: flex; flex-direction: column; align-items: center; width: 100px;">
           <img src="${tokenImg}" style="width: 64px; height: 64px; border: 2px solid ${isSameDisposition ? 'green' : 'red'}; border-radius: 5px;" />
-          <div style="margin-top: 5px;">
-            <div style="margin-bottom: 3px;">
-              <input type="checkbox" id="target-${index}" name="target-${index}" checked>
-            </div>
-            <div style="margin-bottom: 3px;">
-              <label for="target-${index}">${tokenName}</label>
-            </div>
-            <div style="font-size: 0.8em; color: ${isSameDisposition ? 'green' : 'red'};">${dispositionName}</div>
-          </div>
+          <input type="checkbox" id="target-${index}" name="target-${index}" checked style="margin: 6px 0 3px 0;" />
+          <label for="target-${index}" style="margin-bottom: 3px;">${tokenName}</label>
+          <div style="font-size: 0.8em; color: ${isSameDisposition ? 'green' : 'red'};">${dispositionName}</div>
         </div>
       `;
     });
@@ -373,7 +373,14 @@ export async function promptTargetSelection(targets, action) {
           callback: html => {
             const selectedTargets = [];
             targets.forEach((target, index) => {
-              if (html.find(`#target-${index}`).prop('checked')) {
+              let isChecked;
+              if (typeof html.find === 'function') {
+                isChecked = html.find(`#target-${index}`).prop('checked');
+              } else {
+                const checkbox = html.querySelector(`#target-${index}`);
+                isChecked = checkbox ? checkbox.checked : false;
+              }
+              if (isChecked) {
                 selectedTargets.push(target);
               }
             });

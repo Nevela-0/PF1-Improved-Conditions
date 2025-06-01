@@ -277,34 +277,72 @@ class BuffCompendiaSelector extends FormApplication {
 }
 
 Hooks.on('renderSettingsConfig', (app, html, data) => {
-  // Find the elements
-  const automaticBuffsRow = html.find(`input[name="${MODULE.ID}.automaticBuffs"]`).parents('div.form-group');
-  const buffSelectorRow = html.find(`button[data-key="${MODULE.ID}.buffCompendiaSelector"]`).parents('div.form-group');
-  const buffAutomationModeRow = html.find(`select[name="${MODULE.ID}.buffAutomationMode"]`).parents('div.form-group');
-  const buffTargetFilteringRow = html.find(`select[name="${MODULE.ID}.buffTargetFiltering"]`).parents('div.form-group');
-  
-  if (automaticBuffsRow.length && buffSelectorRow.length) {
-    buffSelectorRow.detach().insertAfter(automaticBuffsRow);
+  let tab;
+  if (typeof html.find === 'function') {
+    tab = html.find('section.tab[data-tab="pf1-improved-conditions"]');
+  } else {
+    tab = html.querySelector('section.tab[data-tab="pf1-improved-conditions"]');
   }
-  
-  const automaticBuffsCheckbox = automaticBuffsRow.find('input');
-  
-  const isEnabled = automaticBuffsCheckbox.prop('checked');
+
+  function findFormGroup(selector) {
+    if (!tab) return null;
+    if (typeof html.find === 'function') {
+      return tab.find(selector).closest('.form-group');
+    } else {
+      const el = tab.querySelector(selector);
+      return el ? el.closest('.form-group') : null;
+    }
+  }
+
+  const automaticBuffsRow = findFormGroup('input[name="pf1-improved-conditions.automaticBuffs"]');
+  const buffSelectorRow = findFormGroup('button[data-key="pf1-improved-conditions.buffCompendiaSelector"]');
+  const buffAutomationModeRow = findFormGroup('select[name="pf1-improved-conditions.buffAutomationMode"]');
+  const buffTargetFilteringRow = findFormGroup('select[name="pf1-improved-conditions.buffTargetFiltering"]');
+
+  if (automaticBuffsRow && buffSelectorRow) {
+    if (typeof html.find === 'function') {
+      buffSelectorRow.detach().insertAfter(automaticBuffsRow);
+    } else {
+      automaticBuffsRow.parentNode.insertBefore(buffSelectorRow, automaticBuffsRow.nextSibling);
+    }
+  }
+
+  let automaticBuffsCheckbox;
+  if (typeof html.find === 'function') {
+    automaticBuffsCheckbox = automaticBuffsRow.find('input');
+  } else {
+    automaticBuffsCheckbox = automaticBuffsRow ? automaticBuffsRow.querySelector('input') : null;
+  }
+
+  const isEnabled = automaticBuffsCheckbox
+    ? (typeof html.find === 'function'
+        ? automaticBuffsCheckbox.prop('checked')
+        : automaticBuffsCheckbox.checked)
+    : false;
+
   toggleBuffSettingsVisibility(isEnabled, [buffSelectorRow, buffAutomationModeRow, buffTargetFilteringRow]);
-  
-  automaticBuffsCheckbox.on('change', function() {
-    const isChecked = $(this).prop('checked');
-    toggleBuffSettingsVisibility(isChecked, [buffSelectorRow, buffAutomationModeRow, buffTargetFilteringRow]);
-  });
-  
+
+  if (automaticBuffsCheckbox) {
+    if (typeof html.find === 'function') {
+      automaticBuffsCheckbox.on('change', function() {
+        const isChecked = $(this).prop('checked');
+        toggleBuffSettingsVisibility(isChecked, [buffSelectorRow, buffAutomationModeRow, buffTargetFilteringRow]);
+      });
+    } else {
+      automaticBuffsCheckbox.addEventListener('change', function() {
+        toggleBuffSettingsVisibility(this.checked, [buffSelectorRow, buffAutomationModeRow, buffTargetFilteringRow]);
+      });
+    }
+  }
+
   function toggleBuffSettingsVisibility(show, elements) {
     elements.forEach(element => {
-      if (element && element.length) {
-        if (show) {
-          element.show();
-        } else {
-          element.hide();
-        }
+      if (!element) return;
+      if (typeof html.find === 'function') {
+        if (show) element.show();
+        else element.hide();
+      } else {
+        element.style.display = show ? '' : 'none';
       }
     });
   }

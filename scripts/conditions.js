@@ -154,7 +154,12 @@ export function registerConditions(registry) {
  * Reorder conditions in the Token HUD
  */
 export function reorderTokenHUDConditions(html, data) {
-  const conditions = html.find('.status-effects');
+  let conditions;
+  if (typeof html.find === 'function') {
+    conditions = html.find('.status-effects');
+  } else {
+    conditions = html.querySelectorAll('.status-effects');
+  }
   const reorderAllConditions = game.settings.get(MODULE.ID, 'reorderAllConditions');
 
   const allConditions = pf1.registry.conditions.map(condition => condition._id);
@@ -172,22 +177,46 @@ export function reorderTokenHUDConditions(html, data) {
     sortedEffects = otherConditions.sort((a, b) => a.title.localeCompare(b.title));
   }
 
-  conditions.empty();
+  if (typeof conditions.empty === 'function') {
+    conditions.empty();
+  } else if (conditions instanceof NodeList || Array.isArray(conditions)) {
+    conditions.forEach(el => el.innerHTML = '');
+  } else if (conditions) {
+    conditions.innerHTML = '';
+  }
 
   if (deadCondition && !reorderAllConditions) {
     const deadIcon = `<img class="effect-control ${deadCondition[0].cssClass}" data-status-id="${deadCondition[0].id}" src="${deadCondition[0].src}" title="${deadCondition[0].title}"/>`;
-    conditions.append(deadIcon);
+    if (typeof conditions.append === 'function') {
+      conditions.append(deadIcon);
+    } else if (conditions instanceof NodeList || Array.isArray(conditions)) {
+      conditions.forEach(el => el.insertAdjacentHTML('beforeend', deadIcon));
+    } else if (conditions) {
+      conditions.insertAdjacentHTML('beforeend', deadIcon);
+    }
   }
 
   for (const effect of sortedEffects) {
     const conditionIcon = `<img class="effect-control ${effect.cssClass}" data-status-id="${effect.id}" src="${effect.src}" title="${effect.title}"/>`;
-    conditions.append(conditionIcon);
+    if (typeof conditions.append === 'function') {
+      conditions.append(conditionIcon);
+    } else if (conditions instanceof NodeList || Array.isArray(conditions)) {
+      conditions.forEach(el => el.insertAdjacentHTML('beforeend', conditionIcon));
+    } else if (conditions) {
+      conditions.insertAdjacentHTML('beforeend', conditionIcon);
+    }
   }
 
   if (!reorderAllConditions) {
     for (const effect of buffEffects) {
       const buffIcon = `<img class="effect-control ${effect.cssClass}" data-status-id="${effect.id}" src="${effect.src}" title="${effect.title}"/>`;
-      conditions.append(buffIcon);
+      if (typeof conditions.append === 'function') {
+        conditions.append(buffIcon);
+      } else if (conditions instanceof NodeList || Array.isArray(conditions)) {
+        conditions.forEach(el => el.insertAdjacentHTML('beforeend', buffIcon));
+      } else if (conditions) {
+        conditions.insertAdjacentHTML('beforeend', buffIcon);
+      }
     }
   }
 }
