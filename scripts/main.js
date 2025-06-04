@@ -105,15 +105,16 @@ Hooks.on('renderCombatTracker', (app, html, data) => {
   
   if (isSurprise && isRoundOne) {
     let roundDisplay;
+    const surpriseRoundText = game.i18n.localize('PF1-Improved-Conditions.Main.SurpriseRound');
     if (typeof html.find === "function") {
       roundDisplay = html.find('.encounter-title');
       if (roundDisplay.length) {
-        roundDisplay.html(`<span style="color: red; font-weight: bold;">Surprise Round</span>`);
+        roundDisplay.html(`<span style="color: red; font-weight: bold;">${surpriseRoundText}</span>`);
       }
     } else {
       roundDisplay = html.querySelector('.encounter-title');
       if (roundDisplay) {
-        roundDisplay.innerHTML = `<span style="color: red; font-weight: bold;">Surprise Round</span>`;
+        roundDisplay.innerHTML = `<span style="color: red; font-weight: bold;">${surpriseRoundText}</span>`;
       }
     }
   }
@@ -125,9 +126,10 @@ Hooks.on('renderCombatTracker', (app, html, data) => {
       combatControls.style.flexDirection = 'column';
     }
 
+    const surpriseRoundLabel = game.i18n.localize('PF1-Improved-Conditions.Main.SurpriseRound');
     const surpriseRoundButton = $(
-      `<a class="combat-control" aria-label="Surprise Round" role="button">
-        Surprise Round
+      `<a class="combat-control" aria-label="${surpriseRoundLabel}" role="button">
+        ${surpriseRoundLabel}
       </a>`
     );
 
@@ -349,7 +351,7 @@ Hooks.on('updateActor', async (actorDocument, change, options, userId) => {
   }
 });
 
-Hooks.on("pf1PreActionUse", (action) => {
+Hooks.on("pf1PreActionUse", async (action) => {
   const actionType = action.action.activation?.type;
   const held = action.action.held || action.item.system.held;
   const token = action.token;
@@ -358,7 +360,11 @@ Hooks.on("pf1PreActionUse", (action) => {
   if (action.item && 
       (action.item.type === "spell" || action.item.type === "consumable") && 
       game.settings.get(MODULE.ID, 'automaticBuffs')) {
-    handleBuffAutomation(action);
+        const result = await handleBuffAutomation(action);
+        if (result === false) {
+          action.shared.reject = true;
+          return;
+        }
   }
 
   const grappledHandling = game.settings.get(MODULE.ID, 'grappledHandling');
@@ -366,9 +372,9 @@ Hooks.on("pf1PreActionUse", (action) => {
     if (grappledHandling === "disabled") return;
     if (grappledHandling === "strict") {
       action.shared.reject = true;
-      ui.notifications.info(`${token.name} cannot perform this action due to being grappled and it requires two hands.`);
+      ui.notifications.info(game.i18n.format('PF1-Improved-Conditions.Main.GrappledTwoHands', { name: token.name }));
     } else if (grappledHandling === "lenient") {
-      ui.notifications.info(`${token.name} is grappled but can perform the action under lenient handling.`);
+      ui.notifications.info(game.i18n.format('PF1-Improved-Conditions.Main.GrappledLenient', { name: token.name }));
     }
   }
 
@@ -377,9 +383,9 @@ Hooks.on("pf1PreActionUse", (action) => {
     if (nauseatedHandling === "disabled") return;
     if (nauseatedHandling === "strict" && actionType !== "move") {
       action.shared.reject = true;
-      ui.notifications.info(`${token.name} cannot perform this action due to being nauseated; only move actions are allowed.`);
+      ui.notifications.info(game.i18n.format('PF1-Improved-Conditions.Main.NauseatedStrict', { name: token.name }));
     } else if (nauseatedHandling === "lenient") {
-      ui.notifications.info(`${token.name} is nauseated but can perform other actions under lenient handling.`);
+      ui.notifications.info(game.i18n.format('PF1-Improved-Conditions.Main.NauseatedLenient', { name: token.name }));
     }
   }
 
@@ -388,9 +394,9 @@ Hooks.on("pf1PreActionUse", (action) => {
     if (squeezingHandling === "disabled") return;
     if (squeezingHandling === "strict" && (actionType === "attack" || actionType === "aoo")) {
       action.shared.reject = true;
-      ui.notifications.info(`${token.name} cannot perform attack actions due to being squeezed.`);
+      ui.notifications.info(game.i18n.format('PF1-Improved-Conditions.Main.SqueezingStrict', { name: token.name }));
     } else if (squeezingHandling === "lenient") {
-      ui.notifications.info(`${token.name} is squeezing but can perform attacks under lenient handling.`);
+      ui.notifications.info(game.i18n.format('PF1-Improved-Conditions.Main.SqueezingLenient', { name: token.name }));
     }
   }
 });
@@ -401,10 +407,10 @@ Hooks.on('pf1PreActorRollConcentration', (actor, rollContext) => {
     if (nauseatedHandling === "disabled") return true;
     const token = rollContext.token;
     if (nauseatedHandling === "strict") {
-      ui.notifications.info(`${token.name} cannot perform this action due to being nauseated; only move actions are allowed.`);
+      ui.notifications.info(game.i18n.format('PF1-Improved-Conditions.Main.NauseatedStrict', { name: token.name }));
       return false;
     } else if (nauseatedHandling === "lenient") {
-      ui.notifications.info(`${token.name} is nauseated but can perform this action under lenient handling.`);
+      ui.notifications.info(game.i18n.format('PF1-Improved-Conditions.Main.NauseatedLenient', { name: token.name }));
     }
   }
 });
@@ -454,9 +460,25 @@ Hooks.on("pf1PostActionUse", async (action) => {
   
           await handleConcentrationCheck(itemSource.system.spellbook, skipDialog);
       }
+    }
   }
-  
-  };
+
+  const slotInfo = action._multiTargetSlotConsumption;
+  if (
+    action.item?.type === "spell" &&
+    slotInfo &&
+    slotInfo.extraSlotsNeeded > 0
+  ) {
+    const { spellbook, spellLevelKey, extraSlotsNeeded } = slotInfo;
+    const actor = action.token?.actor;
+    const spellbookData = actor?.system?.attributes?.spells?.spellbooks?.[spellbook];
+    const spellLevelData = spellbookData?.spells?.[spellLevelKey];
+    if (spellLevelData) {
+      const remainingSlots = spellLevelData.value ?? 0;
+      const path = `system.attributes.spells.spellbooks.${spellbook}.spells.${spellLevelKey}.value`;
+      await actor.update({ [path]: remainingSlots - extraSlotsNeeded });
+    }
+  }
 });
 
 function hasHpUpdate(updateData) {

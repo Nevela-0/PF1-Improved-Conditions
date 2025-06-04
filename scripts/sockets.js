@@ -1,4 +1,5 @@
 import { MODULE } from './config.js';
+import { applyBuffToTargets } from './buffs.js';
 export let socket;
 
 Hooks.once("socketlib.ready", () => {
@@ -7,6 +8,7 @@ Hooks.once("socketlib.ready", () => {
     socket.register("sendNotification", sendNotification);
     socket.register("promptHTKChoice", promptHTKChoice);
     socket.register("handleFlatFootedRemoval", handleFlatFootedRemoval);
+    socket.register("applyBuffToTargetsSocket", applyBuffToTargetsSocket);
 });
 
 let immobileConditionIds = new Set();
@@ -36,10 +38,10 @@ async function applyImmobilize(tokenId, limit) {
 
     if (currentLimit !== undefined) {
         await token.document.unsetFlag(MODULE.ID, 'immobilized');
-        sendNotificationToOwners(token, "info", "Movement restriction removed from token.");
+        sendNotificationToOwners(token, "info", game.i18n.localize('PF1-Improved-Conditions.Sockets.MovementRestrictionRemoved'));
     } else {
         await token.document.setFlag(MODULE.ID, 'immobilized', limit);
-        sendNotificationToOwners(token, "info", `Movement restriction applied to token.`);
+        sendNotificationToOwners(token, "info", game.i18n.localize('PF1-Improved-Conditions.Sockets.MovementRestrictionApplied'));
     }
 }
 
@@ -47,19 +49,19 @@ async function promptHTKChoice(actorId) {
     const actor = game.actors.get(actorId);
     if (!actor) return;
 
-    const content = `<p>${actor.name} has a hard to kill ability. Would you like to continue fighting or fall unconscious?</p>`;
-    const options = ["Continue Fighting", "Fall Unconscious"];
+    const content = `<p>${game.i18n.format('PF1-Improved-Conditions.Sockets.HardToKillPrompt', { name: actor.name })}</p>`;
+    const options = [game.i18n.localize('PF1-Improved-Conditions.Sockets.ContinueFighting'), game.i18n.localize('PF1-Improved-Conditions.Sockets.FallUnconscious')];
     const choice = await new Promise(resolve => {
         new Dialog({
-            title: "Hard to Kill Choice",
+            title: game.i18n.localize('PF1-Improved-Conditions.Sockets.HardToKillChoice'),
             content,
             buttons: {
                 fight: {
-                    label: "Continue Fighting",
+                    label: options[0],
                     callback: () => resolve("fight")
                 },
                 unconscious: {
-                    label: "Fall Unconscious",
+                    label: options[1],
                     callback: () => resolve("unconscious")
                 }
             },
@@ -92,7 +94,7 @@ Hooks.on('preUpdateToken', (tokenDocument, updateData, options, userId) => {
             if (deltaX > maxMove || deltaY > maxMove) {
                 if (game.user.id === userId) {
                     const limitFeet = limit * 5;
-                    socket.executeAsUser("sendNotification", userId, "warn", `This token cannot move more than ${limitFeet} feet.`);
+                    socket.executeAsUser("sendNotification", userId, "warn", game.i18n.localize('PF1-Improved-Conditions.Sockets.MaxMoveWarning', { limitFeet: limitFeet }));
                 }
                 return false;
             }
@@ -109,11 +111,11 @@ Hooks.on('preUpdateToken', (tokenDocument, updateData, options, userId) => {
     
         if (hasBlindCondition && (updateData.x !== undefined || updateData.y !== undefined)) {
             new Dialog({
-                title: "Blind Movement Check",
-                content: `<p>${token.name} is blind and needs to make a DC 10 Acrobatics check to move without falling prone.</p>`,
+                title: game.i18n.localize('PF1-Improved-Conditions.Sockets.BlindMovementCheckTitle'),
+                content: `<p>${game.i18n.format('PF1-Improved-Conditions.Sockets.BlindMovementCheckPrompt', { name: token.name })}</p>`,
                 buttons: {
                     roll: {
-                        label: "Roll Acrobatics",
+                        label: game.i18n.localize('PF1-Improved-Conditions.Sockets.RollAcrobatics'),
                         callback: async () => {
                             const roll = await token.actor.rollSkill("acr");
                             if (roll.rolls[0].total >= 10) {
@@ -127,7 +129,7 @@ Hooks.on('preUpdateToken', (tokenDocument, updateData, options, userId) => {
                         }
                     },
                     cancel: {
-                        label: "Cancel",
+                        label: game.i18n.localize('PF1-Improved-Conditions.Common.Cancel'),
                         callback: () => {}
                     }
                 },
@@ -222,4 +224,19 @@ async function handleFlatFootedRemoval(tokenId, round, turn) {
       }
     }
   }
+}
+
+/**
+ * Socket handler to apply buffs as GM on behalf of a player
+ * @param {Object} buffData - {name, id, pack}
+ * @param {Array} targetIds - Array of token IDs
+ * @param {Object} duration - Duration object
+ */
+async function applyBuffToTargetsSocket(buffData, targetIds, duration) {
+    const pack = game.packs.get(buffData.pack);
+    if (!pack) return;
+    const buffDoc = await pack.getDocument(buffData.id);
+    if (!buffDoc) return;
+    const targets = targetIds.map(id => canvas.tokens.get(id)).filter(Boolean);
+    await applyBuffToTargets({ ...buffData, document: buffDoc }, targets, duration);
 }

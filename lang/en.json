@@ -51,7 +51,45 @@
     },
     "Unconscious": {
       "label": "Unconscious",
-      "description": "<p>Knocked out and helpless.</p><p>Can result from having negative hit points (but not more than the creature’s Constitution score) or from nonlethal damage exceeding current hit points.</p>"
+      "description": "<p>Knocked out and helpless.</p><p>Can result from having negative hit points (but not more than the creature's Constitution score) or from nonlethal damage exceeding current hit points.</p>"
+    },
+    "Buffs": {
+      "NoTargetsSelected": "{name} requires at least one target.",
+      "UnableToApplyAutomaticBuffs": "Unable to apply automatic buffs for {name} - no targets selected.",
+      "MultipleBuffOptionsFound": "Multiple buff options found for <strong>{name}</strong>. Please select which one to apply:",
+      "SelectBuffVariant": "Select Buff Variant",
+      "Select": "Select",
+      "SelectTargets": "Select which targets should receive <strong>{name}</strong>:",
+      "SelectBuffTargets": "Select Buff Targets",
+      "ApplyBuff": "Apply Buff",
+      "UpdatedExisting": "Updated existing {name} on {actor}",
+      "Applied": "Applied {name} to {actor}",
+      "FailedToApply": "Failed to apply {name}: {error}",
+      "NotEnoughSpellSlots": "Not enough spell slots to cast this spell on all targets! ({remaining} remaining, {needed} needed)"
+    },
+    "Main": {
+      "GrappledTwoHands": "{name} cannot perform this action due to being grappled and it requires two hands.",
+      "GrappledLenient": "{name} is grappled but can perform the action under lenient handling.",
+      "NauseatedStrict": "{name} cannot perform this action due to being nauseated; only move actions are allowed.",
+      "NauseatedLenient": "{name} is nauseated but can perform other actions under lenient handling.",
+      "SqueezingStrict": "{name} cannot perform attack actions due to being squeezed.",
+      "SqueezingLenient": "{name} is squeezing but can perform attacks under lenient handling.",
+      "SurpriseRound": "Surprise Round"
+    },
+    "Sockets": {
+      "MovementRestrictionRemoved": "Movement restriction removed from token.",
+      "MovementRestrictionApplied": "Movement restriction applied to token.",
+      "HardToKillChoice": "Hard to Kill Choice",
+      "ContinueFighting": "Continue Fighting",
+      "FallUnconscious": "Fall Unconscious",
+      "MaxMoveWarning": "This token cannot move more than {limitFeet} feet.",
+      "BlindMovementCheckTitle": "Blind Movement Check",
+      "RollAcrobatics": "Roll Acrobatics",
+      "HardToKillPrompt": "{name} has a hard to kill ability. Would you like to continue fighting or fall unconscious?",
+      "BlindMovementCheckPrompt": "{name} is blind and needs to make a DC 10 Acrobatics check to move without falling prone."
+    },
+    "Common": {
+      "Cancel": "Cancel"
     }
   }
 }

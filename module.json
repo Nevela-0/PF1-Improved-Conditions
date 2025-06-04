@@ -1,11 +1,11 @@
 {
   "id": "pf1-improved-conditions",
   "title": "PF1 Improved Conditions",
-  "version": "2.0",
+  "version": "2.2 [Beta]",
   "url": "https://github.com/Nevela-0/PF1-Improved-Conditions",
   "compatibility": {
     "minimum": "12",
-    "verified": "12"
+    "verified": "13"
   },
   "relationships": {
     "systems": [

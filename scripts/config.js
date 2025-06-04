@@ -55,13 +55,18 @@ Hooks.once('init', () => {
     restricted: true
   });
 
+  const defaultCompendia = ["pf1.buffs"];
+  if (game.packs.get("pf-content.pf-buffs")) {
+    defaultCompendia.push("pf-content.pf-buffs");
+  }
+
   game.settings.register(MODULE.ID, 'customBuffCompendia', {
     name: 'Custom Buff Compendia',
     hint: 'Select additional compendia containing buffs to include in the automated buff search.',
     scope: 'world',
     config: false,
     type: Array,
-    default: [],
+    default: defaultCompendia,
   });
 
   game.settings.register(MODULE.ID, 'handleConfused', {
@@ -227,8 +232,64 @@ Hooks.once('init', () => {
       };
     }
   });
+
+  game.settings.registerMenu(MODULE.ID, 'modifierNameSettings', {
+    name: 'Customize Buff/Spell Modifiers',
+    label: 'Customize Modifiers',
+    hint: 'Edit the display names for common buff/spell modifiers (e.g., Lesser, Greater, Mass, Communal, etc.)',
+    icon: 'fas fa-pen',
+    type: ModifierNameSettingsForm,
+    restricted: true
+  });
+
+  game.settings.register(MODULE.ID, 'modifierNames', {
+    name: 'Buff/Spell Modifier Names',
+    hint: 'Stores the custom names for buff/spell modifiers.',
+    scope: 'world',
+    config: false,
+    type: Object,
+    default: {
+      lesser: 'Lesser',
+      minor: 'Minor',
+      improved: 'Improved',
+      greater: 'Greater',
+      major: 'Major',
+      supreme: 'Supreme',
+      mass: 'Mass',
+      communal: 'Communal'
+    }
+  });
+
+  game.settings.register(MODULE.ID, 'communalHandling', {
+    name: 'Communal Spell Duration Handling',
+    hint: 'Choose how communal spell durations are divided among targets: divide evenly (prompt if not possible), or always prompt the caster to divide.',
+    scope: 'world',
+    config: true,
+    type: String,
+    choices: {
+      even: 'Divide Evenly (Prompt if impossible)',
+      prompt: 'Always Prompt Caster'
+    },
+    default: 'even'
+  });
+
+  game.settings.register(MODULE.ID, 'personalTargeting', {
+    name: 'Personal Spell Targeting',
+    hint: 'Choose whether personal spells can target tokens other than the caster.',
+    scope: 'world',
+    config: true,
+    type: String,
+    choices: {
+      allow: 'Allow targets other than the caster',
+      deny: 'Deny targets that are not the caster'
+    },
+    default: 'deny'
+  });
 });
 
+/**
+ * Dialog for selecting buff compendia
+ */
 class BuffCompendiaSelector extends FormApplication {
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
@@ -245,19 +306,62 @@ class BuffCompendiaSelector extends FormApplication {
   /** @override */
   async getData() {
     const selectedCompendia = game.settings.get(MODULE.ID, 'customBuffCompendia');
-    
-    const availableCompendia = game.packs.filter(pack => {
-      return (pack.metadata.type === "Item" || pack.documentName === "Item");
-    }).map(pack => {
-      return {
-        id: pack.collection,
-        name: pack.metadata.label,
-        isSelected: selectedCompendia.includes(pack.collection)
-      };
-    }).sort((a, b) => a.name.localeCompare(b.name));
-    
+
+    const systemBuffsPack = game.packs.get("pf1.buffs");
+    const pfContentBuffsPack = game.packs.get("pf-content.pf-buffs");
+    const specialCompendia = [];
+    if (systemBuffsPack && systemBuffsPack.ownership !== ("LIMITED" || CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED)) {
+      let displayName = systemBuffsPack.title;
+      if (displayName && displayName.includes('.')) displayName = game.i18n.localize(displayName);
+      specialCompendia.push({
+        id: systemBuffsPack.collection,
+        name: displayName,
+        isSelected: selectedCompendia.includes(systemBuffsPack.collection)
+      });
+    }
+    if (pfContentBuffsPack && pfContentBuffsPack.ownership !== ("LIMITED" || CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED)) {
+      let displayName = pfContentBuffsPack.title;
+      if (displayName && displayName.includes('.')) displayName = game.i18n.localize(displayName);
+      specialCompendia.push({
+        id: pfContentBuffsPack.collection,
+        name: displayName,
+        isSelected: selectedCompendia.includes(pfContentBuffsPack.collection)
+      });
+    }
+
+    const itemCompendia = game.packs.filter(pack =>
+      (pack.metadata.type === "Item" || pack.documentName === "Item") &&
+      pack.collection !== "pf1.buffs" &&
+      pack.collection !== "pf-content.pf-buffs" &&
+      pack.ownership?.PLAYER !== ("LIMITED" || CONST.DOCUMENT_OWNERSHIP_LEVELS.LIMITED)
+    );
+
+    const compendiaWithBuffs = [];
+    for (const pack of itemCompendia) {
+      try {
+        const index = await pack.getIndex();
+        if (index.some(entry => entry.type === "buff")) {
+          let displayName = pack.title;
+          if (displayName && displayName.includes('.')) {
+            displayName = game.i18n.localize(displayName);
+          }
+          compendiaWithBuffs.push({
+            id: pack.collection,
+            name: displayName,
+            isSelected: selectedCompendia.includes(pack.collection)
+          });
+        }
+      } catch (e) {
+        console.warn(`${MODULE.ID} | Could not index compendium ${pack.collection}:`, e);
+      }
+    }
+
+    compendiaWithBuffs.sort((a, b) => a.name.localeCompare(b.name));
+
+    const allCompendia = [...specialCompendia, ...compendiaWithBuffs];
+
     return {
-      compendia: availableCompendia
+      compendia: allCompendia
     };
   }
   
@@ -286,7 +390,7 @@ Hooks.on('renderSettingsConfig', (app, html, data) => {
 
   function findFormGroup(selector) {
     if (!tab) return null;
-    if (typeof html.find === 'function') {
+    if (typeof html.find === 'function') {  
       return tab.find(selector).closest('.form-group');
     } else {
       const el = tab.querySelector(selector);
@@ -296,14 +400,41 @@ Hooks.on('renderSettingsConfig', (app, html, data) => {
 
   const automaticBuffsRow = findFormGroup('input[name="pf1-improved-conditions.automaticBuffs"]');
   const buffSelectorRow = findFormGroup('button[data-key="pf1-improved-conditions.buffCompendiaSelector"]');
+  const modifierNameSettingsRow = findFormGroup('button[data-key="pf1-improved-conditions.modifierNameSettings"]');
   const buffAutomationModeRow = findFormGroup('select[name="pf1-improved-conditions.buffAutomationMode"]');
   const buffTargetFilteringRow = findFormGroup('select[name="pf1-improved-conditions.buffTargetFiltering"]');
+  const communalHandlingRow = findFormGroup('select[name="pf1-improved-conditions.communalHandling"]');
+  const personalTargetingRow = findFormGroup('select[name="pf1-improved-conditions.personalTargeting"]');
 
   if (automaticBuffsRow && buffSelectorRow) {
     if (typeof html.find === 'function') {
       buffSelectorRow.detach().insertAfter(automaticBuffsRow);
     } else {
       automaticBuffsRow.parentNode.insertBefore(buffSelectorRow, automaticBuffsRow.nextSibling);
+    }
+  }
+
+  if (buffSelectorRow && modifierNameSettingsRow) {
+    if (typeof html.find === 'function') {
+      modifierNameSettingsRow.detach().insertAfter(buffSelectorRow);
+    } else {
+      buffSelectorRow.parentNode.insertBefore(modifierNameSettingsRow, buffSelectorRow.nextSibling);
+    }
+  }
+
+  if (buffTargetFilteringRow && communalHandlingRow) {
+    if (typeof html.find === 'function') {
+      communalHandlingRow.detach().insertAfter(buffTargetFilteringRow);
+    } else {
+      buffTargetFilteringRow.parentNode.insertBefore(communalHandlingRow, buffTargetFilteringRow.nextSibling);
+    }
+  }
+
+  if (communalHandlingRow && personalTargetingRow) {
+    if (typeof html.find === 'function') {
+      personalTargetingRow.detach().insertAfter(communalHandlingRow);
+    } else {
+      communalHandlingRow.parentNode.insertBefore(personalTargetingRow, communalHandlingRow.nextSibling);
     }
   }
 
@@ -320,17 +451,17 @@ Hooks.on('renderSettingsConfig', (app, html, data) => {
         : automaticBuffsCheckbox.checked)
     : false;
 
-  toggleBuffSettingsVisibility(isEnabled, [buffSelectorRow, buffAutomationModeRow, buffTargetFilteringRow]);
+  toggleBuffSettingsVisibility(isEnabled, [buffSelectorRow, modifierNameSettingsRow, buffAutomationModeRow, buffTargetFilteringRow, communalHandlingRow, personalTargetingRow]);
 
   if (automaticBuffsCheckbox) {
     if (typeof html.find === 'function') {
       automaticBuffsCheckbox.on('change', function() {
         const isChecked = $(this).prop('checked');
-        toggleBuffSettingsVisibility(isChecked, [buffSelectorRow, buffAutomationModeRow, buffTargetFilteringRow]);
+        toggleBuffSettingsVisibility(isChecked, [buffSelectorRow, modifierNameSettingsRow, buffAutomationModeRow, buffTargetFilteringRow, communalHandlingRow, personalTargetingRow]);
       });
     } else {
       automaticBuffsCheckbox.addEventListener('change', function() {
-        toggleBuffSettingsVisibility(this.checked, [buffSelectorRow, buffAutomationModeRow, buffTargetFilteringRow]);
+        toggleBuffSettingsVisibility(this.checked, [buffSelectorRow, modifierNameSettingsRow, buffAutomationModeRow, buffTargetFilteringRow, communalHandlingRow, personalTargetingRow]);
       });
     }
   }
@@ -347,3 +478,44 @@ Hooks.on('renderSettingsConfig', (app, html, data) => {
     });
   }
 });
+
+class ModifierNameSettingsForm extends FormApplication {
+  static get defaultOptions() {
+    return foundry.utils.mergeObject(super.defaultOptions, {
+      id: 'modifier-name-settings-form',
+      title: 'Customize Buff/Spell Modifiers',
+      template: `modules/${MODULE.ID}/templates/modifier-name-settings-form.html`,
+      width: 400,
+      height: 'auto',
+      closeOnSubmit: true
+    });
+  }
+
+  getData() {
+    const modifierNames = game.settings.get(MODULE.ID, 'modifierNames') || {};
+    modifierNames.lesser ||= 'Lesser';
+    modifierNames.minor ||= 'Minor';
+    modifierNames.improved ||= 'Improved';
+    modifierNames.greater ||= 'Greater';
+    modifierNames.major ||= 'Major';
+    modifierNames.supreme ||= 'Supreme';
+    modifierNames.mass ||= 'Mass';
+    modifierNames.communal ||= 'Communal';
+    return modifierNames;
+  }
+
+  async _updateObject(event, formData) {
+    const modifierNames = {
+      lesser: formData.lesser?.trim() || 'Lesser',
+      minor: formData.minor?.trim() || 'Minor',
+      improved: formData.improved?.trim() || 'Improved',
+      greater: formData.greater?.trim() || 'Greater',
+      major: formData.major?.trim() || 'Major',
+      supreme: formData.supreme?.trim() || 'Supreme',
+      mass: formData.mass?.trim() || 'Mass',
+      communal: formData.communal?.trim() || 'Communal'
+    };
+    await game.settings.set(MODULE.ID, 'modifierNames', modifierNames);
+    ui.notifications.info(`${MODULE.ID} | Saved custom modifier names.`);
+  }
+}
