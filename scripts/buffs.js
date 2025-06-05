@@ -400,7 +400,8 @@ export async function findMatchingBuffs(name) {
 
   try {
     const customCompendia = game.settings.get(MODULE.ID, 'customBuffCompendia') || [];
-    const compendia = customCompendia.filter(packPath => packPath && game.packs.get(packPath));
+    const useWorldBuffs = customCompendia.includes("__world__");
+    const compendia = customCompendia.filter(packPath => packPath && packPath !== "__world__" && game.packs.get(packPath));
 
     for (const packKey of compendia) {
       const pack = game.packs.get(packKey);
@@ -440,12 +441,33 @@ export async function findMatchingBuffs(name) {
       }
     }
 
-    if (exactMatches.length > 0) {
-      return exactMatches;
+    let worldExactMatches = [];
+    let worldPartialMatches = [];
+    if (useWorldBuffs) {
+      const worldBuffs = game.items.filter(item => item.type === "buff");
+      worldExactMatches = worldBuffs.filter(item => item.name.toLowerCase() === normalizedName).map(item => ({
+        name: item.name,
+        id: item.id,
+        pack: null,
+        document: item
+      }));
+      worldPartialMatches = worldBuffs.filter(item =>
+        item.name.toLowerCase().includes(normalizedName) &&
+        !worldExactMatches.some(em => em.id === item.id)
+      ).map(item => ({
+        name: item.name,
+        id: item.id,
+        pack: null,
+        document: item
+      }));
     }
 
-    if (partialMatches.length > 0) {
-      return partialMatches;
+    if (exactMatches.length > 0 || worldExactMatches.length > 0) {
+      return [...exactMatches, ...worldExactMatches];
+    }
+
+    if (partialMatches.length > 0 || worldPartialMatches.length > 0) {
+      return [...partialMatches, ...worldPartialMatches];
     }
 
     function normalizeTokens(str) {
@@ -476,6 +498,21 @@ export async function findMatchingBuffs(name) {
               document: document
             }];
           }
+        }
+      }
+    }
+    
+    if (useWorldBuffs) {
+      const worldBuffs = game.items.filter(item => item.type === "buff");
+      for (const item of worldBuffs) {
+        const buffTokens = normalizeTokens(item.name);
+        if (buffTokens === normalizedSpellTokens) {
+          return [{
+            name: item.name,
+            id: item.id,
+            pack: null,
+            document: item
+          }];
         }
       }
     }

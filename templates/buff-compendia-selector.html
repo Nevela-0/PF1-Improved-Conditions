@@ -10,6 +10,11 @@
         <span class="compendium-id" style="color: #999; font-size: 0.8em;">{{compendium.id}}</span>
       </div>
       {{/each}}
+      <div class="compendium-row" style="display: flex; align-items: center; margin-bottom: 5px; padding: 5px; border-bottom: 1px solid #ddd; width: 100%;">
+        <input type="checkbox" name="includeWorldBuffs" id="includeWorldBuffs" {{#if includeWorldBuffs}}checked{{/if}}>
+        <label for="includeWorldBuffs" style="margin-left: 10px; flex-grow: 1;">Include World Buffs (Items Directory)</label>
+        <span class="compendium-id" style="color: #999; font-size: 0.8em;">world</span>
+      </div>
     </div>
   </div>
   

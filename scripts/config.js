@@ -306,6 +306,7 @@ class BuffCompendiaSelector extends FormApplication {
   /** @override */
   async getData() {
     const selectedCompendia = game.settings.get(MODULE.ID, 'customBuffCompendia');
+    const includeWorldBuffs = selectedCompendia.includes("__world__");
 
     const systemBuffsPack = game.packs.get("pf1.buffs");
     const pfContentBuffsPack = game.packs.get("pf-content.pf-buffs");
@@ -361,7 +362,8 @@ class BuffCompendiaSelector extends FormApplication {
     const allCompendia = [...specialCompendia, ...compendiaWithBuffs];
 
     return {
-      compendia: allCompendia
+      compendia: allCompendia,
+      includeWorldBuffs
     };
   }
   
@@ -373,6 +375,10 @@ class BuffCompendiaSelector extends FormApplication {
         const compendiumId = key.substring(11);
         selectedCompendia.push(compendiumId);
       }
+    }
+    
+    if (formData.includeWorldBuffs) {
+      selectedCompendia.push("__world__");
     }
     
     await game.settings.set(MODULE.ID, 'customBuffCompendia', selectedCompendia);
