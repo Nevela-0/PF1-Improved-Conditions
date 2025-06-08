@@ -82,10 +82,13 @@ export async function handleBuffAutomation(action) {
     }
   }
   
+  const isAreaOfEffect = !!action.action?.area;
+  
   if (
     action.item.type === "spell" &&
     !isCommunal &&
-    action.shared?.targets?.length > 1
+    action.shared?.targets?.length > 1 &&
+    !isAreaOfEffect
   ) {
     const numTargets = action.shared.targets.length;
     const spellbook = action.item.system.spellbook;
@@ -812,20 +815,22 @@ export async function applyBuffToTargets(buff, targets, duration) {
       if (existingBuff) {
         const isActive = existingBuff.isActive;
         
-        const updateData = {
-          "system.duration.units": duration.units,
-          "system.duration.value": String(duration.value) // Ensure it's a string
-        };
-        
         if (isActive) {
           await existingBuff.update({"system.active": false});
+
+          let tries = 0;
+          while (existingBuff.system.active && tries < 20) {
+            await existingBuff.refresh();
+            await new Promise(r => setTimeout(r, 50));
+            tries++;
+          }
         }
         
-        await existingBuff.update(updateData);
-        
-        if (isActive) {
-          await existingBuff.update({"system.active": true});
-        }
+        await existingBuff.update({
+          "system.duration.units": duration.units,
+          "system.duration.value": String(duration.value),
+          "system.active": true
+        });
         
         ui.notifications.info(game.i18n.format('PF1-Improved-Conditions.Buffs.UpdatedExisting', { name: buff.name, actor: actor.name }));
       } else {
