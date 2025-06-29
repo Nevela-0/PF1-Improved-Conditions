@@ -1,0 +1,46 @@
+name: Bug Report
+description: Report issues with the module
+labels: bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please provide the following version information.
+  - type: input
+    id: module-version
+    attributes:
+      label: Module version
+      description: Version of PF1 Improved Conditions
+    validations:
+      required: true
+  - type: input
+    id: foundry-version
+    attributes:
+      label: Foundry version
+    validations:
+      required: true
+  - type: input
+    id: system-version
+    attributes:
+      label: PF1e system version
+    validations:
+      required: true
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Describe how to reproduce the issue
+    validations:
+      required: true
+  - type: textarea
+    id: module-settings
+    attributes:
+      label: Relevant module settings
+      description: Include any pertinent configuration
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected vs. actual behavior
+      description: What did you expect to happen and what occurred instead?
+    validations:
+      required: true
