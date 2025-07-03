@@ -76,22 +76,22 @@ let updatingToken = false;
 
 Hooks.on('preUpdateToken', (tokenDocument, updateData, options, userId) => {
     if (updatingToken) return true;
-    if (!game.settings.get(MODULE.ID, 'restrictMovement')) {
-        return true;
-    } else {
-        const limit = tokenDocument.getFlag(MODULE.ID, 'immobilized');
-        if (limit !== undefined || hasImmobileCondition(tokenDocument)) {
-            const currentX = tokenDocument.x;
-            const currentY = tokenDocument.y;
-            const newX = updateData.x !== undefined ? updateData.x : currentX;
-            const newY = updateData.y !== undefined ? updateData.y : currentY;
-    
-            const deltaX = Math.abs(newX - currentX);
-            const deltaY = Math.abs(newY - currentY);
-            const gridSize = canvas.grid.size;
-            const maxMove = gridSize * limit;
-    
-            if (deltaX > maxMove || deltaY > maxMove) {
+
+    const restrictSetting = game.settings.get(MODULE.ID, 'restrictMovement');
+    const limit = tokenDocument.getFlag(MODULE.ID, 'immobilized');
+    if (limit !== undefined || hasImmobileCondition(tokenDocument)) {
+        const currentX = tokenDocument.x;
+        const currentY = tokenDocument.y;
+        const newX = updateData.x !== undefined ? updateData.x : currentX;
+        const newY = updateData.y !== undefined ? updateData.y : currentY;
+
+        const deltaX = Math.abs(newX - currentX);
+        const deltaY = Math.abs(newY - currentY);
+        const gridSize = canvas.grid.size;
+        const maxMove = gridSize * limit;
+
+        if (deltaX > maxMove || deltaY > maxMove) {
+            if (restrictSetting === "all" || (restrictSetting === "players" && !game.user.isGM)) {
                 if (game.user.id === userId) {
                     const limitFeet = limit * 5;
                     socket.executeAsUser("sendNotification", userId, "warn", game.i18n.localize('PF1-Improved-Conditions.Sockets.MaxMoveWarning', { limitFeet: limitFeet }));
@@ -101,9 +101,7 @@ Hooks.on('preUpdateToken', (tokenDocument, updateData, options, userId) => {
         }
     }
 
-    if (!game.settings.get(MODULE.ID, 'blindMovementCheck')) {
-        return true;
-    } else {
+    if (game.settings.get(MODULE.ID, 'blindMovementCheck')) {
         const token = canvas.tokens.get(tokenDocument.id);
         if (!token) return;
     
@@ -138,6 +136,8 @@ Hooks.on('preUpdateToken', (tokenDocument, updateData, options, userId) => {
             return false;
         };
     };
+
+    return true;
 });
 
 function sendNotification(type, message) {

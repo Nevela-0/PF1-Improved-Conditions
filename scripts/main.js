@@ -54,6 +54,7 @@ Hooks.on('combatStart', async (combat) => {
 });
 
 Hooks.on('updateCombat', (combat, update, options, userId) => {
+  if (((combat.previous?.round === combat.current?.round) || (combat.previous?.round === 0)) && ((combat.previous?.turn === combat.current?.turn) || (combat.previous?.turn === null)) && (combat.previous?.tokenId === combat.turns[0]?.tokenId || copmbat.previous?.tokenId === null)) return;
   if (update.round !== undefined && game.user.isGM && userId === game.user.id) {
     handleCombatRound(combat, update.round);
   }
@@ -357,16 +358,6 @@ Hooks.on("pf1PreActionUse", async (action) => {
   const token = action.token;
   const actor = token?.actor;
 
-  if (action.item && 
-      (action.item.type === "spell" || action.item.type === "consumable") && 
-      game.settings.get(MODULE.ID, 'automaticBuffs')) {
-        const result = await handleBuffAutomation(action);
-        if (result === false) {
-          action.shared.reject = true;
-          return;
-        }
-  }
-
   const grappledHandling = game.settings.get(MODULE.ID, 'grappledHandling');
   if (grappledHandling && actor?.statuses.has("grappled") && held === "2h") {
     if (grappledHandling === "disabled") return;
@@ -384,6 +375,7 @@ Hooks.on("pf1PreActionUse", async (action) => {
     if (nauseatedHandling === "strict" && actionType !== "move") {
       action.shared.reject = true;
       ui.notifications.info(game.i18n.format('PF1-Improved-Conditions.Main.NauseatedStrict', { name: token.name }));
+      return;
     } else if (nauseatedHandling === "lenient") {
       ui.notifications.info(game.i18n.format('PF1-Improved-Conditions.Main.NauseatedLenient', { name: token.name }));
     }
@@ -460,23 +452,6 @@ Hooks.on("pf1PostActionUse", async (action) => {
   
           await handleConcentrationCheck(itemSource.system.spellbook, skipDialog);
       }
-    }
-  }
-
-  const slotInfo = action._multiTargetSlotConsumption;
-  if (
-    action.item?.type === "spell" &&
-    slotInfo &&
-    slotInfo.extraSlotsNeeded > 0
-  ) {
-    const { spellbook, spellLevelKey, extraSlotsNeeded } = slotInfo;
-    const actor = action.token?.actor;
-    const spellbookData = actor?.system?.attributes?.spells?.spellbooks?.[spellbook];
-    const spellLevelData = spellbookData?.spells?.[spellLevelKey];
-    if (spellLevelData) {
-      const remainingSlots = spellLevelData.value ?? 0;
-      const path = `system.attributes.spells.spellbooks.${spellbook}.spells.${spellLevelKey}.value`;
-      await actor.update({ [path]: remainingSlots - extraSlotsNeeded });
     }
   }
 });

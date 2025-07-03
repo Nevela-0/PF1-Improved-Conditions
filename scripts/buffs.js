@@ -3,20 +3,140 @@
  * Handles automatic application of buffs when spells or consumables are used
  */
 
-
 import { MODULE } from './config.js';
 import { socket } from './sockets.js';
 
+Hooks.once("init", function() {
+  if (!game.modules.get("lib-wrapper")?.active) {
+    ui.notifications.error("PF1 Improved Conditions requires the 'libWrapper' module. Please install and activate it.");
+    return;
+  }
+
+  libWrapper.register(
+    "pf1-improved-conditions",
+    "pf1.actionUse.ActionUse.prototype.process",
+    async function(wrapped, ...args) {
+      const itemType = this.item?.type;
+      const itemSubType = this.item?.subType;
+      const useCustomLogic = itemType === "spell" || itemType === "consumable" || (itemType === "feat" && itemSubType === "classFeat");
+      if (useCustomLogic) {
+        const shared = this.shared;
+        let reqErr = await this.checkRequirements();
+        if (reqErr > 0) return { err: pf1.actionUse.ERR_REQUIREMENT, code: reqErr };
+        await this.autoSelectAmmo();
+        this.getRollData();
+        Hooks.callAll("pf1CreateActionUse", this);
+        shared.fullAttack = true;
+        await this.generateAttacks(true);
+        const dialog = new pf1.applications.AttackDialog(this);
+        const formData = await dialog.show();
+        if (!formData) return;
+        this.formData = formData;
+        this.shared.formData = formData;
+        await this.alterRollData(formData);
+        if (shared.action.ammo.type && shared.action.ammo?.cost > 0) {
+          shared.attacks = shared.attacks.filter((o) => o.hasAmmo);
+          if (shared.attacks.length === 0) {
+            ui.notifications.error(game.i18n.localize("PF1.AmmoDepleted"));
+            return { err: pf1.actionUse.ERR_REQUIREMENT, code: pf1.actionUse.ERR_REQUIREMENT.INSUFFICIENT_AMMO };
+          }
+        }
+        if (!shared.fullAttack) shared.attacks = shared.attacks.slice(0, 1);
+        await this.handleConditionals();
+        await this.prepareChargeCost();
+        if (shared.rollData.chargeCost != 0 && this.shared.action.uses?.perAttack) {
+          const cost = shared.rollData.chargeCost;
+          const charges = shared.item.charges;
+          shared.attacks.forEach((atk, index) => {
+            if (charges >= (index + 1) * cost) atk.chargeCost = cost;
+            else atk.chargeCost = null;
+          });
+          shared.attacks = shared.attacks.filter((o) => o.chargeCost !== null);
+          if (shared.attacks.length === 0) {
+            ui.notifications.error(game.i18n.localize("PF1.ChargesDepleted"));
+            return { err: pf1.actionUse.ERR_REQUIREMENT, code: pf1.actionUse.ERR_REQUIREMENT.INSUFFICIENT_CHARGES };
+          }
+        }
+        reqErr = await this.checkAttackRequirements();
+        if (reqErr > 0) return { err: pf1.actionUse.ERR_REQUIREMENT, code: reqErr };
+        let measureResult;
+        if (shared.useMeasureTemplate && canvas.scene) {
+          measureResult = await this.promptMeasureTemplate();
+          if (measureResult === null) return;
+        }
+        await this.getTargets();
+        await this.generateChatAttacks();
+        await this.addEffectNotes();
+        await this.addFootnotes();
+        if (Hooks.call("pf1PreActionUse", this) === false) {
+          await measureResult?.delete();
+          return;
+        }
+        await handleBuffAutomation(this);
+        await this.executeScriptCalls();
+        if (shared.scriptData?.reject) {
+          await measureResult?.delete();
+          return;
+        }
+        const premessage_promises = [];
+        premessage_promises.push(this.handleDiceSoNice());
+        const ammoCost = this.action.ammo.cost;
+        if (ammoCost != 0) premessage_promises.push(this.subtractAmmo(ammoCost));
+        let totalCost = shared.rollData?.chargeCost;
+        if (this.action.uses.perAttack) {
+          totalCost = this.shared.attacks.reduce((total, atk) => total + atk.chargeCost, 0);
+        }
+        if (totalCost != 0) {
+          shared.totalChargeCost = totalCost;
+          premessage_promises.push(this.item.addCharges(-totalCost));
+        }
+        if (shared.action.isSelfCharged)
+          premessage_promises.push(shared.action.update({ "uses.self.value": shared.action.uses.self.value - 1 }));
+        await Promise.all(premessage_promises);
+        this.updateAmmoUsage();
+        await this.getMessageData();
+        let result = Promise.resolve(null);
+        if (shared.scriptData?.hideChat !== true) {
+          result = this.postMessage();
+        }
+        if (game.settings.get("pf1", "clearTargetsAfterAttack") && game.user.targets.size) {
+          game.user.updateTokenTargets([]);
+          game.user.broadcastActivity({ targets: [] });
+        }
+        await result;
+        await this.executeScriptCalls("postUse");
+        Hooks.callAll("pf1PostActionUse", this, this.shared.message ?? null);
+        return this;
+      } else {
+        return wrapped.apply(this, args);
+      }
+    },
+    "MIXED"
+  );
+});
+
 /**
- * Main function to handle buff automation from the pf1PreActionUse hook
- * @param {Object} action - The action object from the hook
+ * @param {Object} action
  */
 export async function handleBuffAutomation(action) {
-  if (action.item.type !== "spell" && action.item.type !== "consumable") return;
+  let searchName = action.item.name;
+  if (action.item.type === "consumable" && typeof action.item.subType === "string") {
+    const subType = action.item.subType.toLowerCase();
+    let prefixKey = null;
+    if (subType === "wand") prefixKey = "PF1.CreateItemWandOf";
+    else if (subType === "scroll") prefixKey = "PF1.CreateItemScrollOf";
+    else if (subType === "potion") prefixKey = "PF1.CreateItemPotionOf";
+    if (prefixKey) {
+      let localized = game.i18n.localize(prefixKey);
+      let prefix = localized.replace(/\{name\}/, "").trim();
+      if (searchName.toLowerCase().startsWith(prefix.toLowerCase())) {
+        searchName = searchName.slice(prefix.length).trim();
+      }
+    }
+  }
   
   const modifierNames = game.settings.get(MODULE.ID, 'modifierNames') || {};
   const communalString = modifierNames.communal || 'Communal';
-  let searchName = action.item.name;
   let isCommunal = false;
   const communalEndRegex = new RegExp(`(?:,\\s*|\\s*\\(|\\s*\\[|\\s+)${communalString}\\s*(?:\\)|\\])?$`, 'i');
   const communalStartRegex = new RegExp(`^${communalString}[,\s]+`, 'i');
@@ -34,6 +154,7 @@ export async function handleBuffAutomation(action) {
   
   const rangeUnits = action.action?.range?.units;
   const targetValue = action.action?.target?.value;
+  
   const isSelfTargeting = rangeUnits === "personal" || targetValue === "you";
   
   if (!hasTargets && !isSelfTargeting) {
@@ -58,7 +179,6 @@ export async function handleBuffAutomation(action) {
 
   if (isCommunal) {
     const communalHandling = game.settings.get(MODULE.ID, 'communalHandling');
-    const filteringMode = game.settings.get(MODULE.ID, 'buffTargetFiltering');
     if (communalHandling === 'even') {
       let increment = null;
       let totalDuration = null;
@@ -82,46 +202,41 @@ export async function handleBuffAutomation(action) {
     }
   }
   
-  const isAreaOfEffect = !!action.action?.area;
+  const areaString = action.action?.area;
+  const measureTemplateEnabled = action.formData && action.formData["measure-template"];
+  const templateSize = Number(action.action?.measureTemplate?.size || 0);
+  const isAreaOfEffect = !!areaString || (measureTemplateEnabled && templateSize > 5);
+      
+  const casterLevel = action.shared.rollData?.cl;
   
-  if (
-    action.item.type === "spell" &&
-    !isCommunal &&
-    action.shared?.targets?.length > 1 &&
-    !isAreaOfEffect
-  ) {
-    const numTargets = action.shared.targets.length;
-    const spellbook = action.item.system.spellbook;
-    const spellLevel = action.item.system.level;
-    const actor = action.token?.actor;
-
-    const spellbookData = actor?.system?.attributes?.spells?.spellbooks?.[spellbook];
-    const spellLevelKey = `spell${spellLevel}`;
-    const spellLevelData = spellbookData?.spells?.[spellLevelKey];
-
-    if (spellLevelData) {
-      const maxSlots = spellLevelData.max ?? 0;
-      const remainingSlots = spellLevelData.value ?? 0;
-      const usedSlots = maxSlots - remainingSlots;
-      const extraSlotsNeeded = numTargets - 1;
-      if (remainingSlots < extraSlotsNeeded + 1) {
-        action.shared.reject = true;
-        ui.notifications.warn(
-          game.i18n.format("PF1-Improved-Conditions.Buffs.NotEnoughSpellSlots", {
-            remaining: remainingSlots,
-            needed: extraSlotsNeeded + 1
-          })
-        );
-        return false;
+  const durationUnits = action.action?.duration?.units;
+  
+  const rawDurationValue = action.action?.duration?.value;
+  let durationValue;
+  
+  if (rawDurationValue === "@cl") {
+    durationValue = casterLevel;
+  } else if (!isNaN(Number(rawDurationValue))) {
+    durationValue = Number(rawDurationValue);
+  } else if (typeof rawDurationValue === 'string' && rawDurationValue.includes('@cl')) {
+    try {
+      const formula = rawDurationValue.replace(/@cl/g, casterLevel || 0);
+      
+      const sanitizedFormula = formula
+        .replace(/[^0-9+\-*/().]/g, '')
+        .replace(/\s+/g, '');
+        
+      if (sanitizedFormula) {
+        durationValue = new Function(`return ${sanitizedFormula}`)();
       } else {
-        action._multiTargetSlotConsumption = {
-          spellbook,
-          spellLevel,
-          spellLevelKey,
-          extraSlotsNeeded
-        };
+        durationValue = rawDurationValue;
       }
+    } catch (error) {
+      console.error(`${MODULE.ID} | Error calculating duration:`, error);
+      durationValue = rawDurationValue;
     }
+  } else {
+    durationValue = rawDurationValue;
   }
   
   const matchingBuffs = await findMatchingBuffs(searchName);
@@ -153,48 +268,45 @@ export async function handleBuffAutomation(action) {
     }
     
     if (selectedBuff) {
-      const casterLevel = action.shared.rollData?.cl;
-      
-      const durationUnits = action.action?.duration?.units;
-      
-      const rawDurationValue = action.action?.duration?.value;
-      let durationValue;
-      
-      if (rawDurationValue === "@cl") {
-        durationValue = casterLevel;
-      } else if (!isNaN(Number(rawDurationValue))) {
-        durationValue = Number(rawDurationValue);
-      } else if (typeof rawDurationValue === 'string' && rawDurationValue.includes('@cl')) {
-        try {
-          const formula = rawDurationValue.replace(/@cl/g, casterLevel || 0);
-          
-          const sanitizedFormula = formula
-            .replace(/[^0-9+\-*/().]/g, '')
-            .replace(/\s+/g, '');
-            
-          if (sanitizedFormula) {
-            durationValue = new Function(`return ${sanitizedFormula}`)();
-          } else {
-            durationValue = rawDurationValue;
-          }
-        } catch (error) {
-          console.error(`${MODULE.ID} | Error calculating duration:`, error);
-          durationValue = rawDurationValue;
-        }
-      } else {
-        durationValue = rawDurationValue;
-      }
-      
       let filteredTargets = action.shared.targets || [];
       const filteringMode = game.settings.get(MODULE.ID, 'buffTargetFiltering');
-      
+      const personalTargeting = game.settings.get(MODULE.ID, 'personalTargeting');
+    
+      let perTargetDurations = null;
       if (filteringMode === "byDisposition") {
-        filteredTargets = filteredTargets.filter(target => {
-          const targetDisposition = target.document ? target.document.disposition : target.disposition;
-          const actionDisposition = action.token.disposition;
-          return targetDisposition === actionDisposition;
-        });
-        
+        if (isSelfTargeting) {
+          if (personalTargeting === 'deny') {
+            filteredTargets = [action.token];
+          } else {
+            filteredTargets = filteredTargets.filter(target => {
+              const targetDisposition = target.document ? target.document.disposition : target.disposition;
+              const actionDisposition = action.token.disposition;
+              return targetDisposition === actionDisposition;
+            });
+            if (!filteredTargets.some(t => t.id === action.token.id)) {
+              filteredTargets.unshift(action.token);
+            }
+          }
+        } else {
+          filteredTargets = filteredTargets.filter(target => {
+            const targetDisposition = target.document ? target.document.disposition : target.disposition;
+            const actionDisposition = action.token.disposition;
+            return targetDisposition === actionDisposition;
+          });
+          if (isCommunal) {
+            perTargetDurations = await handleCommunalDuration({
+              isCommunal,
+              filteredTargets,
+              durationUnits,
+              durationValue,
+              communalIncrement,
+              communalTotalDuration,
+              communalDurationUnit,
+              action
+            });
+            if (!perTargetDurations) return;
+          }
+        }
       } else if (filteringMode === "manualSelection") {
         if (communalPromptForManual && communalIncrement && communalTotalDuration) {
           const communalResult = await promptTargetSelection(filteredTargets, action, {
@@ -208,153 +320,102 @@ export async function handleBuffAutomation(action) {
               await applyBuffToTargets(selectedBuff, [entry.target], {
                 units: communalDurationUnit,
                 value: String(entry.duration)
-              });
+              }, casterLevel);
             }
             return;
           } else {
             filteredTargets = communalResult;
           }
         } else {
-          filteredTargets = await promptTargetSelection(filteredTargets, action);
-        }
-      }
-
-      if (isCommunal && filteredTargets && filteredTargets.length > 0) {
-        const communalHandling = game.settings.get(MODULE.ID, 'communalHandling');
-        const n = filteredTargets.length;
-        if ((durationUnits === 'hour' || durationUnits === 'hours') && Number(durationValue) === 24) {
-          const increment = 1;
-          const total = 24;
-          if (communalHandling === 'prompt') {
-            const communalResult = await promptTargetSelection(filteredTargets, action, {
-              communal: true,
-              increment: increment,
-              total: total,
-              unit: durationUnits
-            });
-            if (communalResult.length > 0 && communalResult[0].target && communalResult[0].duration !== undefined) {
-              for (const entry of communalResult) {
-                await applyBuffToTargets(selectedBuff, [entry.target], {
-                  units: durationUnits,
-                  value: String(entry.duration)
-                });
-              }
-              return;
+          if (isSelfTargeting) {
+            if (personalTargeting === 'deny') {
+              filteredTargets = [action.token];
             } else {
-              filteredTargets = communalResult;
-            }
-          } else if (communalHandling === 'even') {
-            const perTarget = Math.floor(total / n);
-            const assignedTotal = perTarget * n;
-            if (assignedTotal === total && perTarget > 0) {
-              for (const target of filteredTargets) {
-                await applyBuffToTargets(selectedBuff, [target], {
-                  units: durationUnits,
-                  value: String(perTarget)
-                });
+              if (!filteredTargets.some(t => t.id === action.token.id)) {
+                filteredTargets.unshift(action.token);
               }
-              return;
-            } else {
-              const communalResult = await promptTargetSelection(filteredTargets, action, {
-                communal: true,
-                increment: increment,
-                total: total,
-                unit: durationUnits
-              });
-              if (communalResult.length > 0 && communalResult[0].target && communalResult[0].duration !== undefined) {
-                for (const entry of communalResult) {
-                  await applyBuffToTargets(selectedBuff, [entry.target], {
-                    units: durationUnits,
-                    value: String(entry.duration)
-                  });
-                }
-                return;
+              if (isCommunal) {
+                filteredTargets = await promptTargetSelection(filteredTargets, action, { communal: isCommunal });
               } else {
-                filteredTargets = communalResult;
+                filteredTargets = await promptTargetSelection(filteredTargets, action);
               }
             }
-          }
-        } else if (communalIncrement && communalTotalDuration) {
-          if (communalHandling === 'prompt') {
-            const communalResult = await promptTargetSelection(filteredTargets, action, {
-              communal: true,
-              increment: communalIncrement,
-              total: communalTotalDuration,
-              unit: communalDurationUnit
-            });
-            if (communalResult.length > 0 && communalResult[0].target && communalResult[0].duration !== undefined) {
-              for (const entry of communalResult) {
-                await applyBuffToTargets(selectedBuff, [entry.target], {
-                  units: communalDurationUnit,
-                  value: String(entry.duration)
-                });
-              }
-              return;
-            } else {
-              filteredTargets = communalResult;
-            }
-          } else if (communalHandling === 'even') {
-            const perTarget = Math.floor(communalTotalDuration / n / communalIncrement) * communalIncrement;
-            const assignedTotal = perTarget * n;
-            if (assignedTotal === communalTotalDuration && perTarget > 0) {
-              for (const target of filteredTargets) {
-                await applyBuffToTargets(selectedBuff, [target], {
-                  units: communalDurationUnit,
-                  value: String(perTarget)
-                });
-              }
-              return;
-            } else {
-              const communalResult = await promptTargetSelection(filteredTargets, action, {
-                communal: true,
-                increment: communalIncrement,
-                total: communalTotalDuration,
-                unit: communalDurationUnit
+          } else {
+            if (isCommunal) {
+              perTargetDurations = await handleCommunalDuration({
+                isCommunal,
+                filteredTargets,
+                durationUnits,
+                durationValue,
+                communalIncrement,
+                communalTotalDuration,
+                communalDurationUnit,
+                action
               });
-              if (communalResult.length > 0 && communalResult[0].target && communalResult[0].duration !== undefined) {
-                for (const entry of communalResult) {
-                  await applyBuffToTargets(selectedBuff, [entry.target], {
-                    units: communalDurationUnit,
-                    value: String(entry.duration)
-                  });
-                }
-                return;
-              } else {
-                filteredTargets = communalResult;
-              }
-            }
-          }
-        }
-      }
-      
-      let targets = [];
-      const personalTargeting = game.settings.get(MODULE.ID, 'personalTargeting');
-      if (isSelfTargeting) {
-        if (personalTargeting === 'deny') {
-          targets = [action.token];
-        } else {
-          targets = [action.token];
-          if (action.shared.targets.length > 0) {
-            for (const t of action.shared.targets) {
-              if (t.id !== action.token.id) targets.push(t);
+              if (!perTargetDurations) return;
+            } else {
+              filteredTargets = await promptTargetSelection(filteredTargets, action);
             }
           }
         }
       } else {
-        targets = filteredTargets;
+        if (isSelfTargeting) {
+          if (personalTargeting === 'deny') {
+            filteredTargets = [action.token];
+          } else {
+            if (!filteredTargets.some(t => t.id === action.token.id)) {
+              filteredTargets.unshift(action.token);
+            }
+          }
+        } else {
+          if (isCommunal) {
+            perTargetDurations = await handleCommunalDuration({
+              isCommunal,
+              filteredTargets,
+              durationUnits,
+              durationValue,
+              communalIncrement,
+              communalTotalDuration,
+              communalDurationUnit,
+              action
+            });
+            if (!perTargetDurations) return;
+          } else {
+            if (!filteredTargets.some(t => t.id === action.token.id)) {
+              filteredTargets.unshift(action.token);
+            }
+          }
+        }
       }
       
-      await applyBuffToTargets(selectedBuff, targets, {
-        units: durationUnits,
-        value: String(durationValue)
+      const slotInfo = checkAndConsumeSpellSlots({
+        action,
+        filteredTargets,
+        isCommunal,
+        isAreaOfEffect
       });
+      if (slotInfo && slotInfo.rejected) return;
+
+      if (perTargetDurations && perTargetDurations.length > 0) {
+        for (const entry of perTargetDurations) {
+          await applyBuffToTargets(selectedBuff, [entry.target], {
+            units: entry.duration.units,
+            value: String(entry.duration.value)
+          }, casterLevel);
+        }
+        return;
+      } else {
+        await applyBuffToTargets(selectedBuff, filteredTargets, {
+          units: durationUnits,
+          value: String(durationValue)
+        }, casterLevel);
+      }
     }
   }
 }
 
 /**
  * Categorize buff matches into exact matches, versions (with commas), and variants (with parentheses)
- * 
  * @param {String} spellName - The name of the spell or consumable
  * @param {Array} buffs - Array of matching buff items
  * @returns {Object} Object with categorized matches
@@ -504,7 +565,6 @@ export async function findMatchingBuffs(name) {
         }
       }
     }
-    
     if (useWorldBuffs) {
       const worldBuffs = game.items.filter(item => item.type === "buff");
       for (const item of worldBuffs) {
@@ -608,41 +668,52 @@ export async function promptBuffSelection(buffs, action) {
  * @returns {Promise<Array>} Array of selected target tokens
  */
 export async function promptTargetSelection(targets, action, communalOptions = null) {
-  if (!targets || targets.length === 0) return [];
-  
-  if (!communalOptions || !communalOptions.communal) {
+  const useEnhancedCommunalDialog = communalOptions &&
+    communalOptions.communal &&
+    communalOptions.increment &&
+    communalOptions.total &&
+    communalOptions.unit;
+
+  if (useEnhancedCommunalDialog) {
+    const increment = communalOptions.increment;
+    const total = communalOptions.total;
+    const unit = communalOptions.unit;
+    const n = targets.length;
+    let perTarget = Math.floor(total / n / increment) * increment;
+    let assigned = Array(n).fill(perTarget);
+    let assignedTotal = perTarget * n;
+    let remaining = total - assignedTotal;
+    for (let i = 0; i < n && remaining >= increment; i++) {
+      assigned[i] += increment;
+      remaining -= increment;
+      assignedTotal += increment;
+    }
+
     return new Promise(resolve => {
-      const spellName = action.item.name;
-      let content = `<p>${game.i18n.format('PF1-Improved-Conditions.Buffs.SelectTargets', { name: spellName })}</p>`;
-      
+      let applied = false;
+      let content = `<p>Total available duration: <b>${total} ${unit || ''}</b></p>`;
       content += `<div class="target-selection-container" style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc; border-radius: 5px; padding: 10px; margin-top: 10px;">`;
       content += `<div style="display: flex; flex-wrap: wrap; gap: 10px;">`;
-      
       targets.forEach((target, index) => {
         const tokenName = target.name || target.actor.name;
         const tokenImg = target.document?.texture?.src || target.texture?.src;
-        const targetDisposition = target.document?.disposition || target?.disposition;
-        const actionDisposition = action.token?.disposition;
-        const isSameDisposition = targetDisposition === actionDisposition;
-        
-        let dispositionName = "Unknown";
-        if (targetDisposition === CONST.TOKEN_DISPOSITIONS.NEUTRAL) dispositionName = "Neutral";
-        else if (targetDisposition === CONST.TOKEN_DISPOSITIONS.FRIENDLY) dispositionName = "Friendly";
-        else if (targetDisposition === CONST.TOKEN_DISPOSITIONS.HOSTILE) dispositionName = "Hostile";
-        else if (targetDisposition === CONST.TOKEN_DISPOSITIONS.SECRET) dispositionName = "Secret";
-        
         content += `
-          <div class="target-option" style="display: flex; flex-direction: column; align-items: center; width: 100px;">
-            <img src="${tokenImg}" style="width: 64px; height: 64px; border: 2px solid ${isSameDisposition ? 'green' : 'red'}; border-radius: 5px;" />
-            <input type="checkbox" id="target-${index}" name="target-${index}" checked style="margin: 6px 0 3px 0;" />
-            <label for="target-${index}" style="margin-bottom: 3px;">${tokenName}</label>
-            <div style="font-size: 0.8em; color: ${isSameDisposition ? 'green' : 'red'};">${dispositionName}</div>
+          <div class="target-option" style="display: flex; flex-direction: column; align-items: center; width: 120px;">
+            <div style="font-weight: bold; margin-bottom: 2px;">
+              <span id="duration-${index}">${assigned[index]}</span> ${unit || ''}
+            </div>
+            <div style="display: flex; flex-direction: row; align-items: center; margin-bottom: 2px;">
+              <button type="button" class="communal-down" data-index="${index}" style="width: 24px; height: 24px;">-</button>
+              <button type="button" class="communal-up" data-index="${index}" style="width: 24px; height: 24px; margin-left: 4px;">+</button>
+            </div>
+            <img src="${tokenImg}" style="width: 64px; height: 64px; border: 2px solid #888; border-radius: 5px;" />
+            <label style="margin-bottom: 3px;">${tokenName}</label>
           </div>
         `;
       });
-      
       content += `</div></div>`;
-      
+      content += `<div style="margin-top: 10px;">Unassigned duration: <b><span id="unassigned">${total - assigned.reduce((a, b) => a + b, 0)}</span> ${unit || ''}</b></div>`;
+
       const dialog = new Dialog({
         title: game.i18n.localize('PF1-Improved-Conditions.Buffs.SelectBuffTargets'),
         content: content,
@@ -651,74 +722,83 @@ export async function promptTargetSelection(targets, action, communalOptions = n
             icon: '<i class="fas fa-check"></i>',
             label: game.i18n.localize('PF1-Improved-Conditions.Buffs.ApplyBuff'),
             callback: html => {
-              const selectedTargets = [];
-              targets.forEach((target, index) => {
-                let isChecked;
-                if (typeof html.find === 'function') {
-                  isChecked = html.find(`#target-${index}`).prop('checked');
-                } else {
-                  const checkbox = html.querySelector(`#target-${index}`);
-                  isChecked = checkbox ? checkbox.checked : false;
-                }
-                if (isChecked) {
-                  selectedTargets.push(target);
-                }
-              });
-              resolve(selectedTargets);
+              applied = true;
+              resolve(targets.map((t, i) => ({ target: t, duration: { value: assigned[i], units: unit } })));
             }
           },
           cancel: {
             icon: '<i class="fas fa-times"></i>',
             label: game.i18n.localize('PF1-Improved-Conditions.Common.Cancel'),
-            callback: () => resolve([])
+            callback: () => {
+              action.shared.reject = true;
+              resolve([]);
+            }
           }
         },
         default: "apply",
-        close: () => resolve([])
-      });
-      
-      dialog.render(true);
-    });
-  }
+        close: () => {
+          if (!applied) {
+            action.shared.reject = true;
+            resolve([]);
+          }
+        }
+      }, { width: Math.max(400, n * 140) });
 
-  const increment = communalOptions.increment;
-  const total = communalOptions.total;
-  const unit = communalOptions.unit;
-  const n = targets.length;
-  let perTarget = Math.floor(total / n / increment) * increment;
-  let assigned = Array(n).fill(perTarget);
-  let assignedTotal = perTarget * n;
-  let remaining = total - assignedTotal;
-  for (let i = 0; i < n && remaining >= increment; i++) {
-    assigned[i] += increment;
-    remaining -= increment;
-    assignedTotal += increment;
+      dialog.render(true);
+      Hooks.once('renderDialog', (app, html) => {
+        html.find('.communal-up').on('click', function() {
+          const idx = Number(this.dataset.index);
+          if ((assigned.reduce((a, b) => a + b, 0) + increment) <= total) {
+            assigned[idx] += increment;
+            html.find(`#duration-${idx}`).text(assigned[idx]);
+            html.find('#unassigned').text(total - assigned.reduce((a, b) => a + b, 0));
+          }
+        });
+        html.find('.communal-down').on('click', function() {
+          const idx = Number(this.dataset.index);
+          if (assigned[idx] - increment >= 0) {
+            assigned[idx] -= increment;
+            html.find(`#duration-${idx}`).text(assigned[idx]);
+            html.find('#unassigned').text(total - assigned.reduce((a, b) => a + b, 0));
+          }
+        });
+      });
+    });
   }
 
   return new Promise(resolve => {
-    let content = `<p>Total available duration: <b>${total} ${unit || ''}</b></p>`;
+    let applied = false;
+    const spellName = action.item.name;
+    let content = `<p>${game.i18n.format('PF1-Improved-Conditions.Buffs.SelectTargets', { name: spellName })}</p>`;
+    
     content += `<div class="target-selection-container" style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc; border-radius: 5px; padding: 10px; margin-top: 10px;">`;
     content += `<div style="display: flex; flex-wrap: wrap; gap: 10px;">`;
+    
     targets.forEach((target, index) => {
       const tokenName = target.name || target.actor.name;
       const tokenImg = target.document?.texture?.src || target.texture?.src;
+      const targetDisposition = target.document?.disposition || target?.disposition;
+      const actionDisposition = action.token?.disposition;
+      const isSameDisposition = targetDisposition === actionDisposition;
+      
+      let dispositionName = "Unknown";
+      if (targetDisposition === CONST.TOKEN_DISPOSITIONS.NEUTRAL) dispositionName = "Neutral";
+      else if (targetDisposition === CONST.TOKEN_DISPOSITIONS.FRIENDLY) dispositionName = "Friendly";
+      else if (targetDisposition === CONST.TOKEN_DISPOSITIONS.HOSTILE) dispositionName = "Hostile";
+      else if (targetDisposition === CONST.TOKEN_DISPOSITIONS.SECRET) dispositionName = "Secret";
+      
       content += `
-        <div class="target-option" style="display: flex; flex-direction: column; align-items: center; width: 120px;">
-          <div style="font-weight: bold; margin-bottom: 2px;">
-            <span id="duration-${index}">${assigned[index]}</span> ${unit || ''}
-          </div>
-          <div style="display: flex; flex-direction: row; align-items: center; margin-bottom: 2px;">
-            <button type="button" class="communal-down" data-index="${index}" style="width: 24px; height: 24px;">-</button>
-            <button type="button" class="communal-up" data-index="${index}" style="width: 24px; height: 24px; margin-left: 4px;">+</button>
-          </div>
-          <img src="${tokenImg}" style="width: 64px; height: 64px; border: 2px solid #888; border-radius: 5px;" />
-          <label style="margin-bottom: 3px;">${tokenName}</label>
+        <div class="target-option" style="display: flex; flex-direction: column; align-items: center; width: 100px;">
+          <img src="${tokenImg}" style="width: 64px; height: 64px; border: 2px solid ${isSameDisposition ? 'green' : 'red'}; border-radius: 5px;" />
+          <input type="checkbox" id="target-${index}" name="target-${index}" checked style="margin: 6px 0 3px 0;" />
+          <label for="target-${index}" style="margin-bottom: 3px;">${tokenName}</label>
+          <div style="font-size: 0.8em; color: ${isSameDisposition ? 'green' : 'red'};">${dispositionName}</div>
         </div>
       `;
     });
+    
     content += `</div></div>`;
-    content += `<div style="margin-top: 10px;">Unassigned duration: <b><span id="unassigned">${total - assigned.reduce((a, b) => a + b, 0)}</span> ${unit || ''}</b></div>`;
-
+    
     const dialog = new Dialog({
       title: game.i18n.localize('PF1-Improved-Conditions.Buffs.SelectBuffTargets'),
       content: content,
@@ -727,38 +807,42 @@ export async function promptTargetSelection(targets, action, communalOptions = n
           icon: '<i class="fas fa-check"></i>',
           label: game.i18n.localize('PF1-Improved-Conditions.Buffs.ApplyBuff'),
           callback: html => {
-            resolve(targets.map((t, i) => ({ target: t, duration: assigned[i] })));
+            applied = true;
+            const selectedTargets = [];
+            targets.forEach((target, index) => {
+              let isChecked;
+              if (typeof html.find === 'function') {
+                isChecked = html.find(`#target-${index}`).prop('checked');
+              } else {
+                const checkbox = html.querySelector(`#target-${index}`);
+                isChecked = checkbox ? checkbox.checked : false;
+              }
+              if (isChecked) {
+                selectedTargets.push(target);
+              }
+            });
+            resolve(selectedTargets);
           }
         },
         cancel: {
           icon: '<i class="fas fa-times"></i>',
           label: game.i18n.localize('PF1-Improved-Conditions.Common.Cancel'),
-          callback: () => resolve([])
+          callback: () => {
+            action.shared.reject = true;
+            resolve([]);
+          }
         }
       },
       default: "apply",
-      close: () => resolve([])
-    }, { width: Math.max(400, n * 140) });
-
-    dialog.render(true);
-    Hooks.once('renderDialog', (app, html) => {
-      html.find('.communal-up').on('click', function() {
-        const idx = Number(this.dataset.index);
-        if ((assigned.reduce((a, b) => a + b, 0) + increment) <= total) {
-          assigned[idx] += increment;
-          html.find(`#duration-${idx}`).text(assigned[idx]);
-          html.find('#unassigned').text(total - assigned.reduce((a, b) => a + b, 0));
+      close: () => {
+        if (!applied) {
+          action.shared.reject = true;
+          resolve([]);
         }
-      });
-      html.find('.communal-down').on('click', function() {
-        const idx = Number(this.dataset.index);
-        if (assigned[idx] - increment >= 0) {
-          assigned[idx] -= increment;
-          html.find(`#duration-${idx}`).text(assigned[idx]);
-          html.find('#unassigned').text(total - assigned.reduce((a, b) => a + b, 0));
-        }
-      });
+      }
     });
+    
+    dialog.render(true);
   });
 }
 
@@ -767,15 +851,17 @@ export async function promptTargetSelection(targets, action, communalOptions = n
  * @param {Object} buff - The buff item to apply
  * @param {Array} targets - Array of target tokens
  * @param {Object} duration - The duration information for the buff
+ * @param {number} casterLevel - The caster level of the spell
  * @returns {Promise<void>}
  */
-export async function applyBuffToTargets(buff, targets, duration) {
+export async function applyBuffToTargets(buff, targets, duration, casterLevel) {
   if (!game.user.isGM) {
     await socket.executeAsGM(
       "applyBuffToTargetsSocket",
       { name: buff.name, id: buff.id, pack: buff.pack },
       targets.map(t => t.id),
-      duration
+      duration,
+      casterLevel
     );
     return;
   }
@@ -787,7 +873,6 @@ export async function applyBuffToTargets(buff, targets, duration) {
   
   for (const target of targets) {
     try {
-      // Get the target actor
       const actor = target.actor;
       if (!actor) {
         console.warn(`${MODULE.ID} | Target has no actor, skipping buff application`);
@@ -829,7 +914,8 @@ export async function applyBuffToTargets(buff, targets, duration) {
         await existingBuff.update({
           "system.duration.units": duration.units,
           "system.duration.value": String(duration.value),
-          "system.active": true
+          "system.active": true,
+          ...(casterLevel !== undefined ? { "system.level": casterLevel } : {})
         });
         
         ui.notifications.info(game.i18n.format('PF1-Improved-Conditions.Buffs.UpdatedExisting', { name: buff.name, actor: actor.name }));
@@ -841,6 +927,11 @@ export async function applyBuffToTargets(buff, targets, duration) {
           buffData.system.duration = buffData.system.duration || {};
           buffData.system.duration.units = duration.units;
           buffData.system.duration.value = String(duration.value);
+        }
+        
+        if (casterLevel !== undefined) {
+          buffData.system = buffData.system || {};
+          buffData.system.level = casterLevel;
         }
         
         const newItems = await actor.createEmbeddedDocuments("Item", [buffData]);
@@ -857,4 +948,161 @@ export async function applyBuffToTargets(buff, targets, duration) {
       ui.notifications.error(game.i18n.format('PF1-Improved-Conditions.Buffs.FailedToApply', { name: buff.name, error: error.message }));
     }
   }
+}
+
+/**
+ * Checks and consumes spell slots for multi-target spells.
+ * Returns an object with slot info if successful, or { rejected: true } if not enough slots.
+ * @param {Object} params
+ * @param {Object} params.action
+ * @param {Array} params.filteredTargets
+ * @param {boolean} params.isCommunal
+ * @param {boolean} params.isAreaOfEffect
+ * @returns {Object} slotInfo or { rejected: true }
+ */
+function checkAndConsumeSpellSlots({ action, filteredTargets, isCommunal, isAreaOfEffect }) {
+  if (
+    action.item.type === "spell" &&
+    !isCommunal &&
+    filteredTargets.length > 1 &&
+    !isAreaOfEffect
+  ) {
+    const numTargets = filteredTargets.length;
+    const spellbook = action.item.system.spellbook;
+    const spellLevel = action.item.system.level;
+    const actor = action.token?.actor;
+
+    const spellbookData = actor?.system?.attributes?.spells?.spellbooks?.[spellbook];
+    const spellLevelKey = `spell${spellLevel}`;
+    const spellLevelData = spellbookData?.spells?.[spellLevelKey];
+
+    let maxSlots, remainingSlots, usedSlots;
+    if (spellbookData?.prepared && !spellbookData?.spontaneous) {
+      maxSlots = action.item.system?.preparation?.max ?? 0;
+      remainingSlots = action.item.system?.preparation?.value ?? 0;
+      usedSlots = maxSlots - remainingSlots;
+    } else if (spellbookData?.spontaneous) {
+      maxSlots = spellLevelData.max ?? 0;
+      remainingSlots = spellLevelData.value ?? 0;
+      usedSlots = maxSlots - remainingSlots;
+    } else {
+      maxSlots = spellLevelData.max ?? 0;
+      remainingSlots = spellLevelData.value ?? 0;
+      usedSlots = maxSlots - remainingSlots;
+    }
+    let originalCost = 1;
+    const costStr = action.item.system?.uses?.autoDeductChargesCost;
+    if (typeof costStr === 'string' && costStr.trim() !== '') {
+      const parsed = parseInt(costStr, 10);
+      if (!isNaN(parsed) && parsed > 0) originalCost = parsed;
+    }
+    const totalCost = originalCost * numTargets;
+    if (remainingSlots < totalCost) {
+      action.shared.reject = true;
+      ui.notifications.warn(
+        game.i18n.format("PF1-Improved-Conditions.Buffs.NotEnoughSpellSlots", {
+          remaining: remainingSlots,
+          needed: totalCost
+        })
+      );
+      return { rejected: true };
+    }
+    if (typeof action.shared.rollData.chargeCost === 'number') {
+      action.shared.rollData.chargeCost = totalCost;
+    } else {
+      action.shared.rollData.chargeCost = totalCost;
+    }
+    return { spellbook, spellLevel, spellLevelKey, originalCost, totalCost };
+  }
+  return {};
+}
+
+/**
+ * Handles communal duration logic for all filtering modes.
+ * Returns an array of {target, duration} if per-target durations are needed, or null otherwise.
+ * @param {Object} params - All required parameters.
+ * @returns {Promise<Array|null>} Array of {target, duration} or null
+ */
+async function handleCommunalDuration({
+  isCommunal,
+  filteredTargets,
+  durationUnits,
+  durationValue,
+  communalIncrement,
+  communalTotalDuration,
+  communalDurationUnit,
+  action
+}) {
+  if (isCommunal && filteredTargets && filteredTargets.length > 0) {
+    const communalHandling = game.settings.get(MODULE.ID, 'communalHandling');
+    const n = filteredTargets.length;
+    if ((durationUnits === 'hour' || durationUnits === 'hours') && Number(durationValue) === 24) {
+      const increment = 1;
+      const total = 24;
+      if (communalHandling === 'prompt') {
+        const communalResult = await promptTargetSelection(filteredTargets, action, {
+          communal: true,
+          increment,
+          total,
+          unit: durationUnits
+        });
+        if (communalResult.length > 0 && communalResult[0].target && communalResult[0].duration !== undefined) {
+          return communalResult;
+        } else {
+          return null;
+        }
+      } else if (communalHandling === 'even') {
+        const perTarget = Math.floor(total / n);
+        const assignedTotal = perTarget * n;
+        if (assignedTotal === total && perTarget > 0) {
+          return filteredTargets.map(target => ({ target, duration: perTarget }));
+        } else {
+          const communalResult = await promptTargetSelection(filteredTargets, action, {
+            communal: true,
+            increment,
+            total,
+            unit: durationUnits
+          });
+          if (communalResult.length > 0 && communalResult[0].target && communalResult[0].duration !== undefined) {
+            return communalResult;
+          } else {
+            return null;
+          }
+        }
+      }
+    } else if (communalIncrement && communalTotalDuration) {
+      if (communalHandling === 'prompt') {
+        const communalResult = await promptTargetSelection(filteredTargets, action, {
+          communal: true,
+          increment: communalIncrement,
+          total: communalTotalDuration,
+          unit: communalDurationUnit
+        });
+        if (communalResult.length > 0 && communalResult[0].target && communalResult[0].duration !== undefined) {
+          return communalResult;
+        } else {
+          return null;
+        }
+      } else if (communalHandling === 'even') {
+        const perTarget = Math.floor(communalTotalDuration / n / communalIncrement) * communalIncrement;
+        const assignedTotal = perTarget * n;
+        if (assignedTotal === communalTotalDuration && perTarget > 0) {
+          return filteredTargets.map(target => ({ target, duration: perTarget }));
+        } else {
+          const communalResult = await promptTargetSelection(filteredTargets, action, {
+            communal: true,
+            increment: communalIncrement,
+            total: communalTotalDuration,
+            unit: communalDurationUnit
+          });
+          if (communalResult.length > 0 && communalResult[0].target && communalResult[0].duration !== undefined) {
+            return communalResult;
+          } else {
+            return null;
+          }
+        }
+      }
+    }
+  }
+  return null;
 }

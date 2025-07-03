@@ -80,11 +80,16 @@ Hooks.once('init', () => {
 
   game.settings.register(MODULE.ID, 'restrictMovement', {
     name: "Restrict Movement",
-    hint: "Enable to prevent token movement when affected by any of the following conditions: 'anchored', 'cowering', 'dazed', 'dying', 'helpless', 'paralyzed', 'petrified', or 'pinned'.",
+    hint: "Choose who is restricted from moving when affected by immobilizing conditions such as 'anchored', 'cowering', 'dazed', 'dying', 'helpless', 'paralyzed', 'petrified', or 'pinned'. 'Players Only' allows GMs to always move tokens. 'Disabled' will allow all movement.",
     scope: "world",
     config: true,
-    type: Boolean,
-    default: false,
+    type: String,
+    choices: {
+      "all": "All (GM and Players)",
+      "players": "Players Only (GM can always move)",
+      "disabled": "Disabled"
+    },
+    default: "disabled",
   });
 
   game.settings.register(MODULE.ID, 'autoApplyFF', {
