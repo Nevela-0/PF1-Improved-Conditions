@@ -19,7 +19,7 @@ Hooks.once("init", function() {
       const itemType = this.item?.type;
       const itemSubType = this.item?.subType;
       const useCustomLogic = itemType === "spell" || itemType === "consumable" || (itemType === "feat" && itemSubType === "classFeat");
-      if (useCustomLogic) {
+      if (useCustomLogic && game.settings.get(MODULE.ID, 'automaticBuffs')) {
         const shared = this.shared;
         let reqErr = await this.checkRequirements();
         if (reqErr > 0) return { err: pf1.actionUse.ERR_REQUIREMENT, code: reqErr };
@@ -119,6 +119,18 @@ Hooks.once("init", function() {
  * @param {Object} action
  */
 export async function handleBuffAutomation(action) {
+  if (action.item.type === "feat" && action.item.subType === "classFeat") {
+    const booleanFlags = action.item.system.flags.boolean || {};
+    let isBuff = false;
+    for (let key in booleanFlags) {
+      if (key.toLowerCase() === "buff" && booleanFlags[key]) {
+        isBuff = true;
+        break
+      }
+    } 
+    if (!isBuff) return;
+  }
+
   let searchName = action.item.name;
   if (action.item.type === "consumable" && typeof action.item.subType === "string") {
     const subType = action.item.subType.toLowerCase();
@@ -454,10 +466,6 @@ function categorizeBuffMatches(spellName, buffs) {
  * @returns {Promise<Array>} Array of matching buff items
  */
 export async function findMatchingBuffs(name) {
-  if (!game.settings.get(MODULE.ID, 'automaticBuffs')) {
-    return [];
-  }
-
   const normalizedName = name.toLowerCase();
   let exactMatches = [];
   let partialMatches = [];

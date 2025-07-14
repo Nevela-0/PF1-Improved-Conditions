@@ -34,8 +34,8 @@ These sub-conditions work with other conditions like entangled, grappled, and mo
 - **Unconscious**: Applied automatically when tokens fall below 0 HP, unless affected by abilities like Diehard.
 
 ### Buff Automation
-- Automatically applies buffs when spells or consumables are used
-- Requires spells/consumables to have valid targets
+- Automatically applies buffs when spells, consumables or class features are used
+- Requires spells/consumables/class features to have valid targets
 - Supports multiple buff compendia including PF1 core and PF-Content
 - Smart buff selection system that handles:
   - Exact matches
@@ -53,6 +53,8 @@ These sub-conditions work with other conditions like entangled, grappled, and mo
   - Updates existing buffs instead of stacking
   - Maintains buff duration information
   - Supports custom buff compendia
+
+  **Note: You need to add a boolean flag called "buff" in the advanced tab of class features to set a class feature to apply buffs.**
 
 ## Surprise Rounds
 - Surprise Rounds will only be available if the Flat-Footed setting is enabled. You can start a surprise round by clicking on the "Surprise Round" button above the "Begin Combat" button. This will apply the Flat-Footed condition on all tokens until their turns in the second round. To exclude a token from being surprised, simply select those tokens before you click the surprise round button.
