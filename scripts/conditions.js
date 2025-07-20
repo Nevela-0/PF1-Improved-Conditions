@@ -31,6 +31,23 @@ export function registerConditions(registry) {
     },
     {
       namespace: "pf1-improved-conditions",
+      key: "burning",
+      value: {
+        journal: "Compendium.pf1-improved-conditions.Improved-Conditions.JournalEntry.JNftnIniG9UiP8o7",
+        flags: {},
+        mechanics: {
+          changes: [],
+          flags: []
+        },
+        name: game.i18n.localize("PF1-Improved-Conditions.Burning.label"),
+        showInAction: true,
+        showInDefense: true,
+        texture: "modules/pf1-improved-conditions/icons/burning.png",
+        track: ""
+      }
+    },
+    {
+      namespace: "pf1-improved-conditions",
       key: "energyDrained",
       value: {
         journal: "Compendium.pf1.pf1e-rules.JournalEntry.NSqfXaj4MevUR2uJ.JournalEntryPage.onMPh2re6fIeNgNr",
@@ -225,4 +242,5 @@ export function setupConditionsI18n(t) {
   t.conditions.fascinated = "PF1-Improved-Conditions.Fascinated.description";
   t.conditions.immobilized = "PF1-Improved-Conditions.Immobilized.description";
   t.conditions.slowed = "PF1-Improved-Conditions.Slowed.description";
+  t.conditions.burning = "PF1-Improved-Conditions.Burning.description";
 } 

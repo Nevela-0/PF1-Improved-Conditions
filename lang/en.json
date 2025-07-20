@@ -4,6 +4,10 @@
       "label": "Anchored",
       "description": "<p>Fixed to a particular location.</p><p>Cannot be moved by any external force, including spells like telekinesis.</p><p>Cannot perform actions requiring movement.</p><p>Can still attack or cast spells if they do not involve changing position.</p>"
     },
+    "Burning": {
+      "label": "Burning",
+      "description": "A creature that is burning takes 1d6 fire damage immediately and at the start of each subsequent round until the flames are extinguished. Each round, the creature may attempt a DC 15 Reflex save to put out the fire (success ends the condition). Jumping into water or smothering the flames grants a +4 bonus on this save. Flammable items may also catch fire and require their own saves."
+    },
     "Confused": {
       "Effects": {
         "1": "acts normally",

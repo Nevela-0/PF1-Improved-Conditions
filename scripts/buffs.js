@@ -28,9 +28,15 @@ Hooks.once("init", function() {
         Hooks.callAll("pf1CreateActionUse", this);
         shared.fullAttack = true;
         await this.generateAttacks(true);
-        const dialog = new pf1.applications.AttackDialog(this);
-        const formData = await dialog.show();
-        if (!formData) return;
+        let formData;
+        const options = args[0] || {};
+        if (options.skipDialog) {
+          formData = {};
+        } else {
+          const dialog = new pf1.applications.AttackDialog(this);
+          formData = await dialog.show();
+          if (!formData) return;
+        }
         this.formData = formData;
         this.shared.formData = formData;
         await this.alterRollData(formData);
@@ -263,6 +269,10 @@ export async function handleBuffAutomation(action) {
     } 
     else if (categorizedMatches.variants.length > 0) {
       selectedBuff = await promptBuffSelection(categorizedMatches.variants, action);
+      if (!selectedBuff) {
+        action.shared.reject = true;
+        return;
+      }
     }
     else if (categorizedMatches.versions.length > 0 && categorizedMatches.exact.length === 0) {
       const exactNameMatch = categorizedMatches.versions.find(
@@ -273,10 +283,18 @@ export async function handleBuffAutomation(action) {
         selectedBuff = exactNameMatch;
       } else {
         selectedBuff = await promptBuffSelection(categorizedMatches.versions, action);
+        if (!selectedBuff) {
+          action.shared.reject = true;
+          return;
+        }
       }
     }
     else if (matchingBuffs.length > 0) {
       selectedBuff = await promptBuffSelection(matchingBuffs, action);
+      if (!selectedBuff) {
+        action.shared.reject = true;
+        return;
+      }
     }
     
     if (selectedBuff) {
