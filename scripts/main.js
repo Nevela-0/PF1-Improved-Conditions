@@ -299,6 +299,13 @@ Hooks.on('updateActor', async (actorDocument, change, options, userId) => {
     }
   }
 
+  if (hasHpUpdate(change)) {
+    const newHp = getNewHp(actorDocument, change);
+    if (newHp >= 0 && actorDocument.statuses.has("unconscious")) {
+      await actorDocument.setCondition("unconscious", false);
+    }
+  }
+
   const unconsciousSetting = game.settings.get(MODULE.ID, 'unconsciousAtNegativeHP');
   if (unconsciousSetting !== 'none' && hasHpUpdate(change)) {
     const newHp = getNewHp(actorDocument, change);
@@ -318,6 +325,7 @@ Hooks.on('updateActor', async (actorDocument, change, options, userId) => {
         
         if (!hasHTK) {
           await actorDocument.setCondition('unconscious', true);
+          await actorDocument.setCondition('prone', true);
         }
       }
     }
@@ -348,6 +356,7 @@ Hooks.on('updateActor', async (actorDocument, change, options, userId) => {
     
     if (shouldApply) {
       await actorDocument.setCondition('dead', {overlay: true});
+      await actorDocument.setCondition('prone', true);
     }
   }
 });

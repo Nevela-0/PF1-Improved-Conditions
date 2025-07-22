@@ -694,6 +694,29 @@ export async function promptBuffSelection(buffs, action) {
  * @returns {Promise<Array>} Array of selected target tokens
  */
 export async function promptTargetSelection(targets, action, communalOptions = null) {
+  let filteredTargets = targets;
+  if (!game.user.isGM) {
+    const casterToken = action.token;
+    const casterHasSeeInvisibility = casterToken?.actor?.system?.traits?.senses?.si === true;
+    filteredTargets = targets.filter(token => {
+      const actor = token.actor;
+      const isInvisible = actor.statuses.has("invisible");
+      const isHidden = token.document.hidden;
+      const disposition = token.document?.disposition ?? token?.disposition;
+      if (disposition === CONST.TOKEN_DISPOSITIONS.SECRET) return false;
+      if (isHidden) return false;
+      if (isInvisible && !casterHasSeeInvisibility) return false;
+      if (casterToken && canvas?.visibility?.testVisibility) {
+        const isVisible = canvas.visibility.testVisibility(token.center, {
+          object: token,
+          visionSource: casterToken.vision,
+        });
+        if (!isVisible) return false;
+      }
+      return true;
+    });
+  }
+
   const useEnhancedCommunalDialog = communalOptions &&
     communalOptions.communal &&
     communalOptions.increment &&
@@ -704,7 +727,7 @@ export async function promptTargetSelection(targets, action, communalOptions = n
     const increment = communalOptions.increment;
     const total = communalOptions.total;
     const unit = communalOptions.unit;
-    const n = targets.length;
+    const n = filteredTargets.length;
     let perTarget = Math.floor(total / n / increment) * increment;
     let assigned = Array(n).fill(perTarget);
     let assignedTotal = perTarget * n;
@@ -720,7 +743,7 @@ export async function promptTargetSelection(targets, action, communalOptions = n
       let content = `<p>Total available duration: <b>${total} ${unit || ''}</b></p>`;
       content += `<div class="target-selection-container" style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc; border-radius: 5px; padding: 10px; margin-top: 10px;">`;
       content += `<div style="display: flex; flex-wrap: wrap; gap: 10px;">`;
-      targets.forEach((target, index) => {
+      filteredTargets.forEach((target, index) => {
         const tokenName = target.name || target.actor.name;
         const tokenImg = target.document?.texture?.src || target.texture?.src;
         content += `
@@ -749,7 +772,7 @@ export async function promptTargetSelection(targets, action, communalOptions = n
             label: game.i18n.localize('PF1-Improved-Conditions.Buffs.ApplyBuff'),
             callback: html => {
               applied = true;
-              resolve(targets.map((t, i) => ({ target: t, duration: { value: assigned[i], units: unit } })));
+              resolve(filteredTargets.map((t, i) => ({ target: t, duration: { value: assigned[i], units: unit } })));
             }
           },
           cancel: {
@@ -800,7 +823,7 @@ export async function promptTargetSelection(targets, action, communalOptions = n
     content += `<div class="target-selection-container" style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc; border-radius: 5px; padding: 10px; margin-top: 10px;">`;
     content += `<div style="display: flex; flex-wrap: wrap; gap: 10px;">`;
     
-    targets.forEach((target, index) => {
+    filteredTargets.forEach((target, index) => {
       const tokenName = target.name || target.actor.name;
       const tokenImg = target.document?.texture?.src || target.texture?.src;
       const targetDisposition = target.document?.disposition || target?.disposition;
@@ -835,7 +858,7 @@ export async function promptTargetSelection(targets, action, communalOptions = n
           callback: html => {
             applied = true;
             const selectedTargets = [];
-            targets.forEach((target, index) => {
+            filteredTargets.forEach((target, index) => {
               let isChecked;
               if (typeof html.find === 'function') {
                 isChecked = html.find(`#target-${index}`).prop('checked');
