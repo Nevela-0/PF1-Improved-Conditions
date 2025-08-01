@@ -126,15 +126,11 @@ Hooks.once("init", function() {
  */
 export async function handleBuffAutomation(action) {
   if (action.item.type === "feat" && action.item.subType === "classFeat") {
-    const booleanFlags = action.item.system.flags.boolean || {};
-    let isBuff = false;
-    for (let key in booleanFlags) {
-      if (key.toLowerCase() === "buff" && booleanFlags[key]) {
-        isBuff = true;
-        break
-      }
-    } 
+    const isBuff = action.item.hasItemBooleanFlag('buff');
     if (!isBuff) return;
+  } else if (action.item.type === "spell" || action.item.type === "consumable") {
+    const isNoBuff = action.item.hasItemBooleanFlag('nobuff');
+    if (isNoBuff) return;
   }
 
   let searchName = action.item.name;
