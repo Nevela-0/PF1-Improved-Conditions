@@ -54,7 +54,7 @@ Hooks.on('combatStart', async (combat) => {
 });
 
 Hooks.on('updateCombat', (combat, update, options, userId) => {
-  if (((combat.previous?.round === combat.current?.round) || (combat.previous?.round === 0)) && ((combat.previous?.turn === combat.current?.turn) || (combat.previous?.turn === null)) && (combat.previous?.tokenId === combat.turns[0]?.tokenId || copmbat.previous?.tokenId === null)) return;
+  if (((combat.previous?.round === combat.current?.round) || (combat.previous?.round === 0)) && ((combat.previous?.turn === combat.current?.turn) || (combat.previous?.turn === null)) && (combat.previous?.tokenId === combat.turns[0]?.tokenId || combat.previous?.tokenId === null)) return;
   if (update.round !== undefined && game.user.isGM && userId === game.user.id) {
     handleCombatRound(combat, update.round);
   }
